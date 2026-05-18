@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Collection {
+  id        String           @id @default(cuid())
+  name      String
+  createdAt DateTime         @default(now())
+  items     CollectionItem[]
+}
+
+model CollectionItem {
+  id             String     @id @default(cuid())
+  collectionId   String
+  collection     Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  scryfallId     String
+  oracleId       String
+  cardName       String
+  setCode        String
+  setName        String
+  imageUrl       String?
+  condition      String     @default("NM")
+  isFoil         Boolean    @default(false)
+  quantity       Int        @default(1)
+  priceUsd       Float?
+  priceUsdFoil   Float?
+  priceUpdatedAt DateTime?
+  createdAt      DateTime   @default(now())
+
+  @@index([collectionId])
+  @@index([scryfallId])
+}
