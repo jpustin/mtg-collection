@@ -17,6 +17,8 @@ interface Item {
   priceUsd: number | null;
   priceUsdFoil: number | null;
   priceTix: number | null;
+  priceEur: number | null;
+  priceEurFoil: number | null;
   priceUpdatedAt: string | null;
 }
 
@@ -35,6 +37,16 @@ export default function CollectionDetail() {
       .then(setItems);
   }, [params.id]);
 
+  const priceDisplay = (item: Item) => {
+    if (item.game === "mtgo") return { value: item.priceTix ?? 0, source: "tcgplayer", symbol: "", suffix: " TIX" };
+    if (item.isFoil && item.priceUsdFoil != null) return { value: item.priceUsdFoil, source: "tcgplayer", symbol: "$", suffix: "" };
+    if (item.priceUsd != null) return { value: item.priceUsd, source: "tcgplayer", symbol: "$", suffix: "" };
+    if (item.priceUsdFoil != null) return { value: item.priceUsdFoil, source: "tcgplayer", symbol: "$", suffix: "" };
+    if (item.priceEur != null) return { value: item.priceEur, source: "cardmarket", symbol: "€", suffix: "" };
+    if (item.priceEurFoil != null) return { value: item.priceEurFoil, source: "cardmarket", symbol: "€", suffix: "" };
+    return null;
+  };
+
   const updateItem = async (itemId: string, changes: Partial<Item>) => {
     setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...changes } : i)));
     await fetch(`/api/collections/${params.id}/items/${itemId}`, {
@@ -45,9 +57,8 @@ export default function CollectionDetail() {
   };
 
   const totalValue = items.reduce((sum, i) => {
-    if (i.game === "mtgo") return sum + (i.priceTix || 0) * i.quantity;
-    const price = i.isFoil ? i.priceUsdFoil : i.priceUsd;
-    return sum + (price || 0) * i.quantity;
+    const p = priceDisplay(i);
+    return sum + (p ? p.value * i.quantity : 0);
   }, 0);
 
   const hasMtgo = items.length > 0 && items.some((i) => i.game === "mtgo");
@@ -67,13 +78,6 @@ export default function CollectionDetail() {
     await fetch("/api/prices/refresh", { method: "POST" });
     const res = await fetch(`/api/collections/${params.id}/items`);
     setItems(await res.json());
-  };
-
-  const priceDisplay = (item: Item) => {
-    if (item.game === "mtgo") return item.priceTix ?? 0;
-    if (item.isFoil && item.priceUsdFoil != null) return item.priceUsdFoil;
-    if (!item.isFoil && item.priceUsd != null) return item.priceUsd;
-    return item.priceUsdFoil ?? item.priceUsd ?? 0;
   };
 
   return (
@@ -141,9 +145,7 @@ export default function CollectionDetail() {
             </thead>
             <tbody>
               {items.map((item) => {
-                const price = priceDisplay(item);
-                const symbol = item.game === "mtgo" ? "" : "$";
-                const suffix = item.game === "mtgo" ? " TIX" : "";
+                const p = priceDisplay(item);
 
                 return (
                   <tr key={item.id} className="border-b hover:bg-zinc-50">
@@ -194,10 +196,19 @@ export default function CollectionDetail() {
                       />
                     </td>
                     <td className="px-4 py-3">
-                      {price ? `${symbol}${price.toFixed(2)}${suffix}` : "-"}
+                      {p ? (
+                        <a
+                          href={`https://scryfall.com/search?q=${encodeURIComponent(`!"${item.cardName}"`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          {p.symbol}{p.value.toFixed(2)}{p.suffix}
+                        </a>
+                      ) : "-"}
                     </td>
                     <td className="px-4 py-3 font-semibold">
-                      {price ? `${symbol}${(price * item.quantity).toFixed(2)}${suffix}` : "-"}
+                      {p ? `${p.symbol}${(p.value * item.quantity).toFixed(2)}${p.suffix}` : "-"}
                     </td>
                     <td className="px-4 py-3">
                       <button

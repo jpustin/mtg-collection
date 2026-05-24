@@ -30,6 +30,8 @@ model CollectionItem {
   game           String     @default("paper")
   priceUsd       Float?
   priceUsdFoil   Float?
+  priceEur       Float?
+  priceEurFoil   Float?
   priceTix       Float?
   priceUpdatedAt DateTime?
   createdAt      DateTime   @default(now())

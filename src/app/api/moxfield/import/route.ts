@@ -9,7 +9,7 @@ interface ScryfallResult {
   set_name: string;
   image_uris?: { small: string };
   card_faces?: { image_uris?: { small: string } }[];
-  prices: { usd: string | null; usd_foil: string | null; tix: string | null };
+  prices: { usd: string | null; usd_foil: string | null; eur: string | null; eur_foil: string | null; tix: string | null };
   digital: boolean;
 }
 
@@ -127,9 +127,11 @@ export async function POST(request: NextRequest) {
           isFoil: false,
           quantity,
           game,
-          priceUsd: scryfall.prices?.usd ? parseFloat(scryfall.prices.usd) : null,
-          priceUsdFoil: scryfall.prices?.usd_foil ? parseFloat(scryfall.prices.usd_foil) : null,
-          priceTix: scryfall.prices?.tix ? parseFloat(scryfall.prices.tix) : null,
+              priceUsd: scryfall.prices?.usd ? parseFloat(scryfall.prices.usd) : null,
+              priceUsdFoil: scryfall.prices?.usd_foil ? parseFloat(scryfall.prices.usd_foil) : null,
+              priceEur: scryfall.prices?.eur ? parseFloat(scryfall.prices.eur) : null,
+              priceEurFoil: scryfall.prices?.eur_foil ? parseFloat(scryfall.prices.eur_foil) : null,
+              priceTix: scryfall.prices?.tix ? parseFloat(scryfall.prices.tix) : null,
         },
       });
       imported++;
