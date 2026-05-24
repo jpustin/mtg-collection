@@ -27,6 +27,9 @@ export default function CollectionDetail() {
   const [collectionName, setCollectionName] = useState("");
 
   useEffect(() => {
+    fetch(`/api/collections/${params.id}`)
+      .then((r) => r.json())
+      .then((data) => setCollectionName(data.name || ""));
     fetch(`/api/collections/${params.id}/items`)
       .then((r) => r.json())
       .then(setItems);
