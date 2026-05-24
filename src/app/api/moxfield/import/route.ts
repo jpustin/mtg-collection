@@ -9,6 +9,7 @@ interface ScryfallResult {
   set_name: string;
   image_uris?: { small: string };
   card_faces?: { image_uris?: { small: string } }[];
+  lang?: string;
   prices: { usd: string | null; usd_foil: string | null; eur: string | null; eur_foil: string | null; tix: string | null };
   digital: boolean;
 }

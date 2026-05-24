@@ -34,8 +34,17 @@ export default function Home() {
           const cm: Record<string, number> = { NM: 1, LP: 0.85, MP: 0.7, HP: 0.5, DMG: 0.35 };
           for (const i of items) {
             const mult = cm[i.condition] ?? 1;
+            const foreign = i.lang && i.lang !== "en";
             if (i.game === "mtgo") {
               tix += (i.priceTix || 0) * i.quantity * mult;
+            } else if (foreign) {
+              const eurPrice = i.isFoil ? (i.priceEurFoil ?? i.priceEur) : (i.priceEur ?? i.priceEurFoil);
+              if (eurPrice != null) {
+                eur += eurPrice * i.quantity * mult;
+              } else {
+                const usdPrice = i.isFoil ? (i.priceUsdFoil ?? i.priceUsd) : (i.priceUsd ?? i.priceUsdFoil);
+                if (usdPrice != null) usd += usdPrice * i.quantity * mult;
+              }
             } else {
               const price = i.isFoil ? (i.priceUsdFoil ?? i.priceEurFoil ?? i.priceEur) : (i.priceUsd ?? i.priceEur);
               if (price != null) {

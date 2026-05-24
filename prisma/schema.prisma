@@ -34,6 +34,7 @@ model CollectionItem {
   priceEurFoil   Float?
   priceTix       Float?
   priceUpdatedAt DateTime?
+  lang           String     @default("en")
   createdAt      DateTime   @default(now())
 
   @@index([collectionId])

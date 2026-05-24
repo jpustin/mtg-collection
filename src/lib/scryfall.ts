@@ -55,6 +55,7 @@ export interface ScryfallCard {
       large: string;
     };
   }[];
+  lang?: string;
   prices?: {
     usd: string | null;
     usd_foil: string | null;

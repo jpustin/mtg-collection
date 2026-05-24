@@ -33,7 +33,10 @@ export async function POST(
       game: body.game || "paper",
       priceUsd: body.priceUsd ?? null,
       priceUsdFoil: body.priceUsdFoil ?? null,
+      priceEur: body.priceEur ?? null,
+      priceEurFoil: body.priceEurFoil ?? null,
       priceTix: body.priceTix ?? null,
+      lang: body.lang || "en",
     },
   });
   return Response.json(item, { status: 201 });

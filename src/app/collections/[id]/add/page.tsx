@@ -7,11 +7,13 @@ interface CardPrinting {
   id: string;
   oracle_id: string;
   name: string;
+  printed_name?: string;
+  lang: string;
   set: string;
   set_name: string;
   image_uris?: { small: string };
   card_faces?: { image_uris?: { small: string } }[];
-  prices?: { usd: string | null; usd_foil: string | null; tix: string | null };
+  prices?: { usd: string | null; usd_foil: string | null; eur: string | null; eur_foil: string | null; tix: string | null };
   digital?: boolean;
 }
 
@@ -31,6 +33,7 @@ export default function AddCard() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [printIndex, setPrintIndex] = useState(-1);
+  const [showAllLanguages, setShowAllLanguages] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const suggestionsRef = useRef<HTMLDivElement | null>(null);
   const printsRef = useRef<HTMLDivElement | null>(null);
@@ -62,16 +65,28 @@ export default function AddCard() {
     el?.scrollIntoView({ block: "nearest" });
   }, [printIndex]);
 
+  const loadPrints = (name: string, allLangs: boolean) => {
+    const url = `/api/scryfall/search?q=${encodeURIComponent(name)}${allLangs ? "&lang=all" : ""}`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((json) => setPrints(json.data || []));
+  };
+
   const selectCard = (name: string) => {
     setQuery(name);
     setSelectedName(name);
     setShowSuggestions(false);
     setSelectedPrint(null);
     setPrintIndex(-1);
-    fetch(`/api/scryfall/search?q=${encodeURIComponent(name)}`)
-      .then((r) => r.json())
-      .then((json) => setPrints(json.data || []));
+    loadPrints(name, showAllLanguages);
   };
+
+  useEffect(() => {
+    if (selectedName && !selectedPrint) {
+      loadPrints(selectedName, showAllLanguages);
+      setPrintIndex(-1);
+    }
+  }, [showAllLanguages]);
 
   const imageUrl = (card: CardPrinting) =>
     card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || null;
@@ -97,8 +112,11 @@ export default function AddCard() {
         isFoil,
         quantity,
         game,
+        lang: print.lang || "en",
         priceUsd: print.prices?.usd ? parseFloat(print.prices.usd) : null,
         priceUsdFoil: print.prices?.usd_foil ? parseFloat(print.prices.usd_foil) : null,
+        priceEur: print.prices?.eur ? parseFloat(print.prices.eur) : null,
+        priceEurFoil: print.prices?.eur_foil ? parseFloat(print.prices.eur_foil) : null,
         priceTix: print.prices?.tix ? parseFloat(print.prices.tix) : null,
       }),
     });
@@ -168,9 +186,19 @@ export default function AddCard() {
 
         {selectedName && prints.length > 0 && !selectedPrint && (
           <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium">
-              Select Printing ({prints.length} available)
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">
+                Select Printing ({prints.length} available)
+              </label>
+              <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showAllLanguages}
+                  onChange={(e) => setShowAllLanguages(e.target.checked)}
+                />
+                Show all languages
+              </label>
+            </div>
             <div ref={printsRef} className="max-h-64 overflow-auto rounded-lg border">
               {prints.map((print, i) => (
                 <button
@@ -184,8 +212,13 @@ export default function AddCard() {
                   ) : (
                     <div className="w-6 h-8 rounded bg-zinc-200" />
                   )}
-                  <span className="font-medium">{print.set_name}</span>
-                  <span className="text-zinc-400">({print.set.toUpperCase()})</span>
+                  <span className="font-medium truncate">
+                    {print.printed_name && print.lang !== "en" ? print.printed_name : print.set_name}
+                  </span>
+                  <span className="text-zinc-400 shrink-0">({print.set.toUpperCase()})</span>
+                  {print.lang && print.lang !== "en" && (
+                    <span className="ml-auto rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700 shrink-0">{print.lang.toUpperCase()}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -199,9 +232,14 @@ export default function AddCard() {
                 <img src={imageUrl(selectedPrint)!} alt="" className="w-10 h-14 rounded object-cover" />
               ) : null}
               <div>
-                <p className="font-medium">{selectedPrint.name}</p>
+                <p className="font-medium">
+                  {selectedPrint.printed_name && selectedPrint.lang !== "en" ? selectedPrint.printed_name : selectedPrint.name}
+                </p>
                 <p className="text-sm text-zinc-500">
                   {selectedPrint.set_name} ({selectedPrint.set.toUpperCase()})
+                  {selectedPrint.lang && selectedPrint.lang !== "en" && (
+                    <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700">{selectedPrint.lang.toUpperCase()}</span>
+                  )}
                 </p>
               </div>
               <button

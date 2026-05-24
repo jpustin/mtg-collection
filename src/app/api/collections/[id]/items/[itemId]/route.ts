@@ -23,6 +23,7 @@ export async function PATCH(
       ...(body.priceEur !== undefined && { priceEur: body.priceEur }),
       ...(body.priceEurFoil !== undefined && { priceEurFoil: body.priceEurFoil }),
       ...(body.priceTix !== undefined && { priceTix: body.priceTix }),
+      ...(body.lang !== undefined && { lang: body.lang }),
     },
   });
   return Response.json(item);

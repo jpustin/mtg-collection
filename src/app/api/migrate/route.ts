@@ -7,6 +7,7 @@ export async function GET() {
       'ALTER TABLE "CollectionItem" ADD COLUMN IF NOT EXISTS "priceTix" DOUBLE PRECISION',
       'ALTER TABLE "CollectionItem" ADD COLUMN IF NOT EXISTS "priceEur" DOUBLE PRECISION',
       'ALTER TABLE "CollectionItem" ADD COLUMN IF NOT EXISTS "priceEurFoil" DOUBLE PRECISION',
+      'ALTER TABLE "CollectionItem" ADD COLUMN IF NOT EXISTS "lang" TEXT NOT NULL DEFAULT \'en\'',
       'UPDATE "CollectionItem" SET "game" = \'paper\' WHERE "game" = \'mtgo\'',
     ];
     for (const sql of statements) {

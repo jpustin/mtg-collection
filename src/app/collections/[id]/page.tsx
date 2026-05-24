@@ -14,6 +14,7 @@ interface Item {
   isFoil: boolean;
   quantity: number;
   game: string;
+  lang: string;
   priceUsd: number | null;
   priceUsdFoil: number | null;
   priceTix: number | null;
@@ -28,6 +29,8 @@ interface CardPrint {
   setCode: string;
   setName: string;
   imageUrl: string | null;
+  lang: string;
+  printedName?: string;
 }
 
 export default function CollectionDetail() {
@@ -39,6 +42,7 @@ export default function CollectionDetail() {
   const [setPickerItem, setSetPickerItem] = useState<Item | null>(null);
   const [prints, setPrints] = useState<CardPrint[]>([]);
   const [setSearch, setSetSearch] = useState("");
+  const [showSetAllLangs, setShowSetAllLangs] = useState(false);
   const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -92,6 +96,13 @@ export default function CollectionDetail() {
   const priceDisplay = (item: Item) => {
     const mult = conditionMult[item.condition] ?? 1;
     if (item.game === "mtgo") return { value: (item.priceTix ?? 0) * mult, source: "tcgplayer", symbol: "", suffix: " TIX" };
+
+    const foreign = item.lang && item.lang !== "en";
+    if (foreign) {
+      if (item.isFoil && item.priceEurFoil != null) return { value: item.priceEurFoil * mult, source: "cardmarket", symbol: "€", suffix: "" };
+      if (item.priceEur != null) return { value: item.priceEur * mult, source: "cardmarket", symbol: "€", suffix: "" };
+      if (item.priceEurFoil != null) return { value: item.priceEurFoil * mult, source: "cardmarket", symbol: "€", suffix: "" };
+    }
     if (item.isFoil && item.priceUsdFoil != null) return { value: item.priceUsdFoil * mult, source: "tcgplayer", symbol: "$", suffix: "" };
     if (item.priceUsd != null) return { value: item.priceUsd * mult, source: "tcgplayer", symbol: "$", suffix: "" };
     if (item.priceUsdFoil != null) return { value: item.priceUsdFoil * mult, source: "tcgplayer", symbol: "$", suffix: "" };
@@ -129,11 +140,10 @@ export default function CollectionDetail() {
     router.push("/");
   };
 
-  const openSetPicker = (item: Item) => {
-    setSetPickerItem(item);
-    setSetSearch("");
+  const loadPicker = (cardName: string, allLangs: boolean) => {
     setPrints([]);
-    fetch(`/api/scryfall/search?q=${encodeURIComponent(item.cardName)}`)
+    const url = `/api/scryfall/search?q=${encodeURIComponent(cardName)}${allLangs ? "&lang=all" : ""}`;
+    fetch(url)
       .then((r) => r.json())
       .then((json) => {
         const ps: CardPrint[] = (json.data || []).map((c: any) => ({
@@ -142,11 +152,24 @@ export default function CollectionDetail() {
           setCode: c.set,
           setName: c.set_name,
           imageUrl: c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || null,
+          lang: c.lang || "en",
+          printedName: c.printed_name,
         }));
         setPrints(ps);
       })
       .catch(() => {});
   };
+
+  const openSetPicker = (item: Item) => {
+    setSetPickerItem(item);
+    setSetSearch("");
+    setShowSetAllLangs(false);
+    loadPicker(item.cardName, false);
+  };
+
+  useEffect(() => {
+    if (setPickerItem) loadPicker(setPickerItem.cardName, showSetAllLangs);
+  }, [showSetAllLangs]);
 
   const changeSet = async (itemId: string, print: CardPrint, originalItem: Item) => {
     const res = await fetch(`https://api.scryfall.com/cards/${print.scryfallId}`, {
@@ -161,6 +184,7 @@ export default function CollectionDetail() {
       setName: card.set_name,
       imageUrl: print.imageUrl,
       game: "paper",
+      lang: card.lang || "en",
       priceUsd: card.prices?.usd ? parseFloat(card.prices.usd) : null,
       priceUsdFoil: card.prices?.usd_foil ? parseFloat(card.prices.usd_foil) : null,
       priceEur: card.prices?.eur ? parseFloat(card.prices.eur) : null,
@@ -298,6 +322,9 @@ export default function CollectionDetail() {
                           <img src={item.imageUrl} alt="" className="w-8 h-11 rounded object-cover shrink-0" />
                         )}
                         <span className="font-medium">{item.cardName}</span>
+                        {item.lang && item.lang !== "en" && (
+                          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700">{item.lang.toUpperCase()}</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-zinc-600 hidden sm:table-cell">
@@ -386,9 +413,17 @@ export default function CollectionDetail() {
                 value={setSearch}
                 onChange={(e) => setSetSearch(e.target.value)}
                 placeholder="Search sets..."
-                className="w-full rounded border px-2 py-1 text-sm"
+                className="w-full rounded border px-2 py-1 text-sm mb-2"
                 autoFocus
               />
+              <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showSetAllLangs}
+                  onChange={(e) => setShowSetAllLangs(e.target.checked)}
+                />
+                Show all languages
+              </label>
             </div>
             <div className="max-h-72 overflow-auto">
               {prints.length === 0 && (
@@ -397,7 +432,8 @@ export default function CollectionDetail() {
               {prints
                 .filter((p) =>
                   p.setName.toLowerCase().includes(setSearch.toLowerCase()) ||
-                  p.setCode.toLowerCase().includes(setSearch.toLowerCase())
+                  p.setCode.toLowerCase().includes(setSearch.toLowerCase()) ||
+                  (p.printedName && p.printedName.toLowerCase().includes(setSearch.toLowerCase()))
                 )
                 .slice(0, 50)
                 .map((p) => (
@@ -409,8 +445,13 @@ export default function CollectionDetail() {
                     {p.imageUrl && (
                       <img src={p.imageUrl} alt="" className="w-5 h-7 rounded object-cover" />
                     )}
-                    <span>{p.setName}</span>
-                    <span className="text-zinc-400 ml-auto">({p.setCode.toUpperCase()})</span>
+                    <span className="truncate">
+                      {p.printedName && p.lang !== "en" ? p.printedName : p.setName}
+                    </span>
+                    <span className="text-zinc-400 ml-auto shrink-0">({p.setCode.toUpperCase()})</span>
+                    {p.lang && p.lang !== "en" && (
+                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700 shrink-0">{p.lang.toUpperCase()}</span>
+                    )}
                   </button>
                 ))}
             </div>
