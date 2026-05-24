@@ -40,6 +40,31 @@ export default function CollectionDetail() {
   const [prints, setPrints] = useState<CardPrint[]>([]);
   const [setSearch, setSetSearch] = useState("");
   const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === items.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(items.map((i) => i.id)));
+  };
+
+  const deleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    await fetch(`/api/collections/${params.id}/items`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...selectedIds] }),
+    });
+    setItems((prev) => prev.filter((i) => !selectedIds.has(i.id)));
+    setSelectedIds(new Set());
+  };
 
   useEffect(() => {
     const names = new URL(window.location.href).searchParams.get("updated");
@@ -212,10 +237,36 @@ export default function CollectionDetail() {
           </Link>
         </div>
       ) : (
+        <>
+        {selectedIds.size > 0 && (
+          <div className="mb-3 flex items-center gap-3 px-4 py-2 rounded-lg bg-red-50 text-sm">
+            <span className="text-red-700">{selectedIds.size} selected</span>
+            <button
+              onClick={deleteSelected}
+              className="rounded border border-red-300 px-3 py-1 text-red-600 hover:bg-red-100"
+            >
+              Delete Selected
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-red-400 hover:text-red-600"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         <div className="rounded-xl border bg-white overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-zinc-50 text-left">
+                <th className="px-4 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={items.length > 0 && selectedIds.size === items.length}
+                    onChange={selectAll}
+                    className="cursor-pointer"
+                  />
+                </th>
                 <th className="px-4 py-3 font-medium whitespace-nowrap">Card</th>
                 <th className="px-4 py-3 font-medium whitespace-nowrap hidden sm:table-cell">Set</th>
                 <th className="px-4 py-3 font-medium whitespace-nowrap">Cond.</th>
@@ -233,6 +284,14 @@ export default function CollectionDetail() {
 
                 return (
                   <tr key={item.id} className={`border-b hover:bg-zinc-50 ${highlighted.has(item.cardName.toLowerCase()) ? "animate-pulse bg-amber-50" : ""}`}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => toggleSelect(item.id)}
+                        className="cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {item.imageUrl && (
@@ -315,6 +374,7 @@ export default function CollectionDetail() {
             </tbody>
           </table>
         </div>
+        </>
       )}
       {setPickerItem && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 sm:pt-20 bg-black/20 p-4" onClick={() => setSetPickerItem(null)}>

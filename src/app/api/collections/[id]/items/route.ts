@@ -38,3 +38,18 @@ export async function POST(
   });
   return Response.json(item, { status: 201 });
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const { ids } = await request.json();
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return Response.json({ error: "ids array is required" }, { status: 400 });
+  }
+  await prisma.collectionItem.deleteMany({
+    where: { collectionId: id, id: { in: ids } },
+  });
+  return new Response(null, { status: 204 });
+}
