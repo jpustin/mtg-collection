@@ -15,6 +15,7 @@ export default function Home() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [itemsData, setItemsData] = useState<Record<string, { usd: number; eur: number; tix: number }>>({});
   const [audRate, setAudRate] = useState<number | null>(null);
+  const [eurAudRate, setEurAudRate] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -22,7 +23,10 @@ export default function Home() {
   const fetchAll = () => {
     fetch("/api/rates")
       .then((r) => r.json())
-      .then((data) => setAudRate(data.aud));
+      .then((data) => {
+        setAudRate(data.aud);
+        setEurAudRate(data.eurAud);
+      });
     fetch("/api/collections")
       .then((r) => r.json())
       .then(async (cols: Collection[]) => {
@@ -88,10 +92,23 @@ export default function Home() {
         </div>
         <div className="rounded-xl border bg-white p-4">
           <p className="text-sm text-zinc-500">Est. Value (AUD)</p>
-          <p className="text-2xl font-bold">A${(totalUsd * (audRate || 1.5)).toFixed(2)}</p>
+          <p className="text-2xl font-bold">
+            A${(totalUsd * (audRate || 1.5) + totalEur * (eurAudRate || 1.65)).toFixed(2)}
+          </p>
         </div>
       </div>
-      {totalEur > 0 && <p className="text-sm text-zinc-500 -mt-4 mb-4">EUR: €{totalEur.toFixed(2)} &middot; TIX: {totalTix.toFixed(2)}</p>}
+      {(totalEur > 0 || totalTix > 0) && (
+        <p className="text-sm text-zinc-500 -mt-4 mb-4">
+          {totalEur > 0 && (
+            <>
+              EUR: €{totalEur.toFixed(2)}
+              {eurAudRate && <span className="text-zinc-400"> (A${(totalEur * eurAudRate).toFixed(2)} AUD)</span>}
+            </>
+          )}
+          {totalEur > 0 && totalTix > 0 && " · "}
+          {totalTix > 0 && <>TIX: {totalTix.toFixed(2)}</>}
+        </p>
+      )}
 
       <h2 className="text-lg font-semibold mb-3">Collections</h2>
       {collections.length === 0 ? (
@@ -150,7 +167,9 @@ export default function Home() {
                         {c._count.items} card{c._count.items !== 1 ? "s" : ""}
                       </p>
                       <p className="text-xs text-zinc-400 mt-1">
-                        ${d.usd.toFixed(2)} USD &middot; A${(d.usd * (audRate || 1.5)).toFixed(2)} AUD
+                        ${d.usd.toFixed(2)} USD
+                        {d.eur > 0 && <> &middot; €{d.eur.toFixed(2)} EUR</>}
+                        &middot; A${(d.usd * (audRate || 1.5) + d.eur * (eurAudRate || 1.65)).toFixed(2)} AUD
                       </p>
                     </Link>
                     <div className="flex flex-col gap-1.5 shrink-0">

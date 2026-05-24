@@ -42,6 +42,7 @@ export default function CollectionDetail() {
   const [items, setItems] = useState<Item[]>([]);
   const [collectionName, setCollectionName] = useState("");
   const [audRate, setAudRate] = useState<number | null>(null);
+  const [eurAudRate, setEurAudRate] = useState<number | null>(null);
   const [setPickerItem, setSetPickerItem] = useState<Item | null>(null);
   const [prints, setPrints] = useState<CardPrint[]>([]);
   const [setSearch, setSetSearch] = useState("");
@@ -91,7 +92,10 @@ export default function CollectionDetail() {
       .then(setItems);
     fetch("/api/rates")
       .then((r) => r.json())
-      .then((data) => setAudRate(data.aud));
+      .then((data) => {
+        setAudRate(data.aud);
+        setEurAudRate(data.eurAud);
+      });
   }, [params.id]);
 
 
@@ -240,7 +244,12 @@ export default function CollectionDetail() {
             {audRate && <span className="ml-2 text-zinc-400">(A${(totals.usd * audRate).toFixed(2)} AUD)</span>}
           </div>
         )}
-        {totals.eur > 0 && <div>EUR: <span className="font-semibold">€{totals.eur.toFixed(2)}</span></div>}
+        {totals.eur > 0 && (
+          <div>
+            EUR: <span className="font-semibold">€{totals.eur.toFixed(2)}</span>
+            {eurAudRate && <span className="ml-2 text-zinc-400">(A${(totals.eur * eurAudRate).toFixed(2)} AUD)</span>}
+          </div>
+        )}
         {totals.tix > 0 && <div>TIX: <span className="font-semibold">{totals.tix.toFixed(2)} TIX</span></div>}
       </div>
 
