@@ -7,6 +7,7 @@ export async function GET() {
       'ALTER TABLE "CollectionItem" ADD COLUMN IF NOT EXISTS "priceTix" DOUBLE PRECISION',
       'ALTER TABLE "CollectionItem" ADD COLUMN IF NOT EXISTS "priceEur" DOUBLE PRECISION',
       'ALTER TABLE "CollectionItem" ADD COLUMN IF NOT EXISTS "priceEurFoil" DOUBLE PRECISION',
+      'UPDATE "CollectionItem" SET "game" = \'paper\' WHERE "game" = \'mtgo\'',
     ];
     for (const sql of statements) {
       await prisma.$executeRawUnsafe(sql);
