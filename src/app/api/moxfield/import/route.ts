@@ -33,18 +33,7 @@ async function findCard(rawName: string): Promise<ScryfallResult | null> {
   const name = cleanCardName(rawName);
   if (!name) return null;
 
-  const namedUrl = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`;
-  try {
-    const res = await fetch(namedUrl, {
-      headers: { "User-Agent": "MTGCollection/1.0" },
-    });
-    if (res.ok) {
-      const card = (await res.json()) as ScryfallResult;
-      if (hasPrice(card)) return card;
-    }
-  } catch {}
-
-  const searchUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`!"${name}"`)}&unique=prints&order=usd&dir=desc`;
+  const searchUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`!"${name}"`)}&unique=prints&order=released&dir=asc`;
   try {
     const res = await fetch(searchUrl, {
       headers: { "User-Agent": "MTGCollection/1.0" },
@@ -52,9 +41,12 @@ async function findCard(rawName: string): Promise<ScryfallResult | null> {
     if (res.ok) {
       const data = await res.json();
       if (data.data && data.data.length > 0) {
-        const withPrice = data.data.find(hasPrice);
-        if (withPrice) return withPrice as ScryfallResult;
-        return data.data[0] as ScryfallResult;
+        const cards = data.data as ScryfallResult[];
+        const paperWithPrice = cards.find((c) => !c.digital && hasPrice(c));
+        if (paperWithPrice) return paperWithPrice;
+        const paper = cards.find((c) => !c.digital);
+        if (paper) return paper;
+        return cards[0] as ScryfallResult;
       }
     }
   } catch {}
