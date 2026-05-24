@@ -25,10 +25,6 @@ export default function CollectionDetail() {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>([]);
   const [collectionName, setCollectionName] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editCondition, setEditCondition] = useState("NM");
-  const [editIsFoil, setEditIsFoil] = useState(false);
-  const [editQuantity, setEditQuantity] = useState(1);
 
   useEffect(() => {
     fetch(`/api/collections/${params.id}`)
@@ -38,6 +34,15 @@ export default function CollectionDetail() {
       .then((r) => r.json())
       .then(setItems);
   }, [params.id]);
+
+  const updateItem = async (itemId: string, changes: Partial<Item>) => {
+    setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...changes } : i)));
+    await fetch(`/api/collections/${params.id}/items/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(changes),
+    });
+  };
 
   const totalValue = items.reduce((sum, i) => {
     if (i.game === "mtgo") return sum + (i.priceTix || 0) * i.quantity;
@@ -58,36 +63,11 @@ export default function CollectionDetail() {
     setItems((prev) => prev.filter((i) => i.id !== itemId));
   };
 
-  const startEdit = (item: Item) => {
-    setEditingId(item.id);
-    setEditCondition(item.condition);
-    setEditIsFoil(item.isFoil);
-    setEditQuantity(item.quantity);
-  };
-
-  const saveEdit = async (itemId: string) => {
-    await fetch(`/api/collections/${params.id}/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ condition: editCondition, isFoil: editIsFoil, quantity: editQuantity }),
-    });
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === itemId ? { ...i, condition: editCondition, isFoil: editIsFoil, quantity: editQuantity } : i
-      )
-    );
-    setEditingId(null);
-  };
-
-  const cancelEdit = () => setEditingId(null);
-
   const refreshPrices = async () => {
     await fetch("/api/prices/refresh", { method: "POST" });
     const res = await fetch(`/api/collections/${params.id}/items`);
     setItems(await res.json());
   };
-
-  const currency = hasMtgo ? "TIX" : "$";
 
   const priceDisplay = (item: Item) => {
     const price = item.game === "mtgo" ? item.priceTix : item.isFoil ? item.priceUsdFoil : item.priceUsd;
@@ -162,7 +142,6 @@ export default function CollectionDetail() {
                 const price = priceDisplay(item);
                 const symbol = item.game === "mtgo" ? "" : "$";
                 const suffix = item.game === "mtgo" ? " TIX" : "";
-                const isEditing = editingId === item.id;
 
                 return (
                   <tr key={item.id} className="border-b hover:bg-zinc-50">
@@ -176,35 +155,27 @@ export default function CollectionDetail() {
                     </td>
                     <td className="px-4 py-3 text-zinc-600">{item.setName}</td>
                     <td className="px-4 py-3">
-                      {isEditing ? (
-                        <select
-                          value={editCondition}
-                          onChange={(e) => setEditCondition(e.target.value)}
-                          className="rounded border px-2 py-1 text-xs w-20"
-                        >
-                          <option value="NM">NM</option>
-                          <option value="LP">LP</option>
-                          <option value="MP">MP</option>
-                          <option value="HP">HP</option>
-                          <option value="DMG">DMG</option>
-                        </select>
-                      ) : (
-                        item.condition
-                      )}
+                      <select
+                        value={item.condition}
+                        onChange={(e) => updateItem(item.id, { condition: e.target.value })}
+                        className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-zinc-300 cursor-pointer"
+                      >
+                        <option value="NM">NM</option>
+                        <option value="LP">LP</option>
+                        <option value="MP">MP</option>
+                        <option value="HP">HP</option>
+                        <option value="DMG">DMG</option>
+                      </select>
                     </td>
                     <td className="px-4 py-3">
-                      {isEditing ? (
-                        <select
-                          value={editIsFoil ? "yes" : "no"}
-                          onChange={(e) => setEditIsFoil(e.target.value === "yes")}
-                          className="rounded border px-2 py-1 text-xs w-16"
-                        >
-                          <option value="no">No</option>
-                          <option value="yes">Yes</option>
-                        </select>
-                      ) : (
-                        item.isFoil ? "Yes" : "No"
-                      )}
+                      <select
+                        value={item.isFoil ? "yes" : "no"}
+                        onChange={(e) => updateItem(item.id, { isFoil: e.target.value === "yes" })}
+                        className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-zinc-300 cursor-pointer"
+                      >
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                      </select>
                     </td>
                     <td className="px-4 py-3 text-xs">
                       <span className={`rounded px-1.5 py-0.5 ${item.game === "mtgo" ? "bg-blue-50 text-blue-600" : "bg-green-50 text-green-600"}`}>
@@ -212,17 +183,13 @@ export default function CollectionDetail() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          min={1}
-                          value={editQuantity}
-                          onChange={(e) => setEditQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                          className="rounded border px-2 py-1 text-xs w-16"
-                        />
-                      ) : (
-                        item.quantity
-                      )}
+                      <input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) => updateItem(item.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                        className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs w-14 hover:border-zinc-300"
+                      />
                     </td>
                     <td className="px-4 py-3">
                       {price ? `${symbol}${price.toFixed(2)}${suffix}` : "-"}
@@ -231,39 +198,12 @@ export default function CollectionDetail() {
                       {price ? `${symbol}${(price * item.quantity).toFixed(2)}${suffix}` : "-"}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        {isEditing ? (
-                          <>
-                            <button
-                              onClick={() => saveEdit(item.id)}
-                              className="text-green-600 hover:text-green-800 text-xs font-medium"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="text-zinc-400 hover:text-zinc-700 text-xs"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => startEdit(item)}
-                              className="text-blue-500 hover:text-blue-700 text-xs"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteItem(item.id)}
-                              className="text-red-500 hover:text-red-700 text-xs"
-                            >
-                              Remove
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => deleteItem(item.id)}
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        Remove
+                      </button>
                     </td>
                   </tr>
                 );
