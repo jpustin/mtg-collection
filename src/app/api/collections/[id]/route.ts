@@ -12,6 +12,16 @@ export async function GET(
   return Response.json(collection);
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const json = await request.json();
+  const collection = await prisma.collection.update({ where: { id }, data: json });
+  return Response.json(collection);
+}
+
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }

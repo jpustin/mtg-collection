@@ -14,8 +14,11 @@ export default function Home() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [itemsData, setItemsData] = useState<Record<string, { usd: number; eur: number; tix: number }>>({});
   const [audRate, setAudRate] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchAll = () => {
     fetch("/api/rates")
       .then((r) => r.json())
       .then((data) => setAudRate(data.aud));
@@ -45,7 +48,26 @@ export default function Home() {
         }
         setItemsData(totals);
       });
-  }, []);
+  };
+
+  useEffect(() => { fetchAll() }, []);
+
+  const rename = async (id: string) => {
+    if (!editName.trim()) return;
+    await fetch(`/api/collections/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editName.trim() }),
+    });
+    setEditingId(null);
+    fetchAll();
+  };
+
+  const del = async (id: string) => {
+    await fetch(`/api/collections/${id}`, { method: "DELETE" });
+    setConfirmDelete(null);
+    fetchAll();
+  };
 
   const totalUsd = Object.values(itemsData).reduce((a, b) => a + b.usd, 0);
   const totalEur = Object.values(itemsData).reduce((a, b) => a + b.eur, 0);
@@ -90,23 +112,93 @@ export default function Home() {
         <div className="space-y-2">
           {collections.map((c) => {
             const d = itemsData[c.id] || { usd: 0, eur: 0, tix: 0 };
+            const isEditing = editingId === c.id;
             return (
-              <Link
+              <div
                 key={c.id}
-                href={`/collections/${c.id}`}
-                className="flex items-center justify-between rounded-xl border bg-white p-4 hover:border-zinc-300 transition-colors"
+                className="flex items-center justify-between rounded-xl border bg-white p-4"
               >
-                <div>
-                  <p className="font-medium">{c.name}</p>
-                  <p className="text-sm text-zinc-500">
-                    {c._count.items} card{c._count.items !== 1 ? "s" : ""}
-                  </p>
+                {isEditing ? (
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") rename(c.id);
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                      className="w-full rounded border px-2 py-1 text-sm"
+                      autoFocus
+                    />
+                    <div className="flex gap-2 mt-1">
+                      <button
+                        onClick={() => rename(c.id)}
+                        className="text-xs text-zinc-600 hover:text-zinc-900"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="text-xs text-zinc-400 hover:text-zinc-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <Link href={`/collections/${c.id}`} className="flex-1 hover:opacity-80">
+                    <p className="font-medium">{c.name}</p>
+                    <p className="text-sm text-zinc-500">
+                      {c._count.items} card{c._count.items !== 1 ? "s" : ""}
+                    </p>
+                  </Link>
+                )}
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="font-semibold">${d.usd.toFixed(2)} USD</p>
+                    <p className="text-xs text-zinc-400">A${(d.usd * (audRate || 1.5)).toFixed(2)} AUD</p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setEditingId(c.id);
+                        setEditName(c.name);
+                      }}
+                      className="text-xs text-zinc-400 hover:text-zinc-600"
+                    >
+                      Rename
+                    </button>
+                    {confirmDelete === c.id ? (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => del(c.id)}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(null)}
+                          className="text-xs text-zinc-400 hover:text-zinc-600"
+                        >
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setConfirmDelete(c.id);
+                        }}
+                        className="text-xs text-red-400 hover:text-red-600"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold">${d.usd.toFixed(2)} USD</p>
-                  <p className="text-xs text-zinc-400">A${(d.usd * (audRate || 1.5)).toFixed(2)} AUD</p>
-                </div>
-              </Link>
+              </div>
             );
           })}
         </div>
