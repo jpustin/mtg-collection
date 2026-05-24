@@ -7,7 +7,7 @@ import Link from "next/link";
 export default function ImportPage() {
   const params = useParams();
   const router = useRouter();
-  const [deckUrl, setDeckUrl] = useState("");
+  const [deckText, setDeckText] = useState("");
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{
     imported: number;
@@ -24,7 +24,7 @@ export default function ImportPage() {
       const res = await fetch("/api/moxfield/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ collectionId: params.id, deckUrl }),
+        body: JSON.stringify({ collectionId: params.id, deckText }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -48,24 +48,27 @@ export default function ImportPage() {
         >
           &larr; Back
         </Link>
-        <h1 className="text-2xl font-bold">Import from Moxfield</h1>
+        <h1 className="text-2xl font-bold">Import Deck</h1>
       </div>
 
       <div className="rounded-xl border bg-white p-6 max-w-xl">
-        <label className="block mb-2 text-sm font-medium">Moxfield Deck URL</label>
-        <input
-          type="text"
-          value={deckUrl}
-          onChange={(e) => setDeckUrl(e.target.value)}
-          placeholder="https://moxfield.com/decks/..."
-          className="w-full rounded-lg border px-3 py-2 text-sm mb-4"
+        <label className="block mb-2 text-sm font-medium">Paste Deck List</label>
+        <p className="text-xs text-zinc-500 mb-3">
+          Paste cards from any deck builder. Format: <code>4 Lightning Bolt</code> or <code>1 Sol Ring</code>. One card per line.
+        </p>
+        <textarea
+          value={deckText}
+          onChange={(e) => setDeckText(e.target.value)}
+          placeholder={`4 Lightning Bolt\n2 Counterspell\n1 Sol Ring\nSB: 1 Surgical Extraction`}
+          rows={10}
+          className="w-full rounded-lg border px-3 py-2 text-sm mb-4 font-mono"
         />
         <button
           onClick={doImport}
-          disabled={importing || !deckUrl}
+          disabled={importing || !deckText.trim()}
           className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-700 disabled:opacity-50"
         >
-          {importing ? "Importing..." : "Import Deck"}
+          {importing ? "Importing..." : "Import Cards"}
         </button>
 
         {error && (
