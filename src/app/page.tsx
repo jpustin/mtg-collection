@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { priceDisplay } from "@/lib/pricing";
 
 interface Collection {
   id: string;
@@ -31,27 +32,13 @@ export default function Home() {
           const res = await fetch(`/api/collections/${c.id}/items`);
           const items = await res.json();
           let usd = 0, eur = 0, tix = 0;
-          const cm: Record<string, number> = { NM: 1, LP: 0.85, MP: 0.7, HP: 0.5, DMG: 0.35 };
           for (const i of items) {
-            const mult = cm[i.condition] ?? 1;
-            const foreign = i.lang && i.lang !== "en";
-            if (i.game === "mtgo") {
-              tix += (i.priceTix || 0) * i.quantity * mult;
-            } else if (foreign) {
-              const eurPrice = i.isFoil ? (i.priceEurFoil ?? i.priceEur) : (i.priceEur ?? i.priceEurFoil);
-              if (eurPrice != null) {
-                eur += eurPrice * i.quantity * mult;
-              } else {
-                const usdPrice = i.isFoil ? (i.priceUsdFoil ?? i.priceUsd) : (i.priceUsd ?? i.priceUsdFoil);
-                if (usdPrice != null) usd += usdPrice * i.quantity * mult;
-              }
-            } else {
-              const price = i.isFoil ? (i.priceUsdFoil ?? i.priceEurFoil ?? i.priceEur) : (i.priceUsd ?? i.priceEur);
-              if (price != null) {
-                if (i.priceUsd || i.priceUsdFoil) usd += (i.isFoil ? (i.priceUsdFoil ?? 0) : (i.priceUsd ?? 0)) * i.quantity * mult;
-                else eur += price * i.quantity * mult;
-              }
-            }
+            const p = priceDisplay(i);
+            if (!p) continue;
+            const sub = p.value * i.quantity;
+            if (p.source === "cardmarket") eur += sub;
+            else if (p.source === "mtgo") tix += sub;
+            else usd += sub;
           }
           totals[c.id] = { usd, eur, tix };
         }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { priceDisplay } from "@/lib/pricing";
 
 interface Item {
   id: string;
@@ -91,25 +92,7 @@ export default function CollectionDetail() {
       .then((data) => setAudRate(data.aud));
   }, [params.id]);
 
-  const conditionMult: Record<string, number> = { NM: 1, LP: 0.85, MP: 0.7, HP: 0.5, DMG: 0.35 };
 
-  const priceDisplay = (item: Item) => {
-    const mult = conditionMult[item.condition] ?? 1;
-    if (item.game === "mtgo") return { value: (item.priceTix ?? 0) * mult, source: "tcgplayer", symbol: "", suffix: " TIX" };
-
-    const foreign = item.lang && item.lang !== "en";
-    if (foreign) {
-      if (item.isFoil && item.priceEurFoil != null) return { value: item.priceEurFoil * mult, source: "cardmarket", symbol: "€", suffix: "" };
-      if (item.priceEur != null) return { value: item.priceEur * mult, source: "cardmarket", symbol: "€", suffix: "" };
-      if (item.priceEurFoil != null) return { value: item.priceEurFoil * mult, source: "cardmarket", symbol: "€", suffix: "" };
-    }
-    if (item.isFoil && item.priceUsdFoil != null) return { value: item.priceUsdFoil * mult, source: "tcgplayer", symbol: "$", suffix: "" };
-    if (item.priceUsd != null) return { value: item.priceUsd * mult, source: "tcgplayer", symbol: "$", suffix: "" };
-    if (item.priceUsdFoil != null) return { value: item.priceUsdFoil * mult, source: "tcgplayer", symbol: "$", suffix: "" };
-    if (item.priceEur != null) return { value: item.priceEur * mult, source: "cardmarket", symbol: "€", suffix: "" };
-    if (item.priceEurFoil != null) return { value: item.priceEurFoil * mult, source: "cardmarket", symbol: "€", suffix: "" };
-    return null;
-  };
 
   const updateItem = async (itemId: string, changes: Partial<Item>) => {
     setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...changes } : i)));
