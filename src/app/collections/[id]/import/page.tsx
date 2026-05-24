@@ -7,7 +7,9 @@ import Link from "next/link";
 export default function ImportPage() {
   const params = useParams();
   const router = useRouter();
+  const [mode, setMode] = useState<"text" | "url">("text");
   const [deckText, setDeckText] = useState("");
+  const [deckUrl, setDeckUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{
     imported: number;
@@ -21,14 +23,29 @@ export default function ImportPage() {
     setError("");
     setResult(null);
     try {
-      const res = await fetch("/api/moxfield/import", {
+      let body: Record<string, string>;
+      let endpoint: string;
+
+      if (mode === "text") {
+        endpoint = "/api/moxfield/import";
+        body = { collectionId: params.id as string, deckText };
+      } else {
+        endpoint = "/api/deck/import";
+        body = { collectionId: params.id as string, url: deckUrl };
+      }
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ collectionId: params.id, deckText }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Import failed");
+        if (data.error === "moxfield_blocked") {
+          setError("Moxfield URL import is not available. Switch to Paste Text mode and paste your deck list from Moxfield's Export option.");
+        } else {
+          setError(data.error || "Import failed");
+        }
       } else {
         setResult(data);
       }
@@ -38,6 +55,8 @@ export default function ImportPage() {
       setImporting(false);
     }
   };
+
+  const canSubmit = mode === "text" ? deckText.trim() : deckUrl.trim();
 
   return (
     <div>
@@ -52,20 +71,61 @@ export default function ImportPage() {
       </div>
 
       <div className="rounded-xl border bg-white p-6 max-w-xl">
-        <label className="block mb-2 text-sm font-medium">Paste Deck List</label>
-        <p className="text-xs text-zinc-500 mb-3">
-          Paste cards from any deck builder. Format: <code>4 Lightning Bolt</code> or <code>1 Sol Ring</code>. One card per line.
-        </p>
-        <textarea
-          value={deckText}
-          onChange={(e) => setDeckText(e.target.value)}
-          placeholder={`4 Lightning Bolt\n2 Counterspell\n1 Sol Ring\nSB: 1 Surgical Extraction`}
-          rows={10}
-          className="w-full rounded-lg border px-3 py-2 text-sm mb-4 font-mono"
-        />
+        <div className="flex gap-1 mb-5 p-1 rounded-lg bg-zinc-100 w-fit">
+          <button
+            onClick={() => setMode("text")}
+            className={`px-3 py-1.5 text-sm rounded-md ${mode === "text" ? "bg-white shadow-sm font-medium" : "text-zinc-600 hover:text-zinc-900"}`}
+          >
+            Paste Text
+          </button>
+          <button
+            onClick={() => setMode("url")}
+            className={`px-3 py-1.5 text-sm rounded-md ${mode === "url" ? "bg-white shadow-sm font-medium" : "text-zinc-600 hover:text-zinc-900"}`}
+          >
+            Import from URL
+          </button>
+        </div>
+
+        {mode === "text" ? (
+          <>
+            <label className="block mb-2 text-sm font-medium">Paste Deck List</label>
+            <p className="text-xs text-zinc-500 mb-3">
+              Paste cards from any deck builder. Format: <code>4 Lightning Bolt</code> or <code>1 Sol Ring</code>. One card per line.
+            </p>
+            <textarea
+              value={deckText}
+              onChange={(e) => setDeckText(e.target.value)}
+              placeholder={`4 Lightning Bolt\n2 Counterspell\n1 Sol Ring\nSB: 1 Surgical Extraction`}
+              rows={10}
+              className="w-full rounded-lg border px-3 py-2 text-sm mb-4 font-mono"
+            />
+          </>
+        ) : (
+          <>
+            <label className="block mb-2 text-sm font-medium">Deck URL</label>
+            <p className="text-xs text-zinc-500 mb-3">
+              Paste the URL of a public deck from Archidekt.
+            </p>
+            <input
+              type="url"
+              value={deckUrl}
+              onChange={(e) => setDeckUrl(e.target.value)}
+              placeholder="https://archidekt.com/decks/12345"
+              className="w-full rounded-lg border px-3 py-2 text-sm mb-4"
+            />
+            <details className="mb-4 text-xs text-zinc-500">
+              <summary className="cursor-pointer hover:text-zinc-700">Supported sites</summary>
+              <ul className="mt-2 ml-4 list-disc space-y-1">
+                <li><strong>Archidekt</strong> &mdash; <code>https://archidekt.com/decks/&lt;id&gt;</code></li>
+                <li><strong>Moxfield</strong> &mdash; not available via URL. Use Paste Text mode instead.</li>
+              </ul>
+            </details>
+          </>
+        )}
+
         <button
           onClick={doImport}
-          disabled={importing || !deckText.trim()}
+          disabled={importing || !canSubmit}
           className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-700 disabled:opacity-50"
         >
           {importing ? "Importing..." : "Import Cards"}
