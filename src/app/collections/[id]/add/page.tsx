@@ -67,6 +67,7 @@ export default function AddCard() {
     setSelectedName(name);
     setShowSuggestions(false);
     setSelectedPrint(null);
+    setPrintIndex(-1);
     fetch(`/api/scryfall/search?q=${encodeURIComponent(name)}`)
       .then((r) => r.json())
       .then((json) => setPrints(json.data || []));
@@ -127,31 +128,18 @@ export default function AddCard() {
               }
             }}
             onKeyDown={(e) => {
-              if (selectedName && !selectedPrint && prints.length > 0) {
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  setPrintIndex((prev) => Math.min(prev + 1, prints.length - 1));
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  setPrintIndex((prev) => Math.max(prev - 1, 0));
-                } else if (e.key === "Enter" && printIndex >= 0) {
-                  e.preventDefault();
-                  setSelectedPrint(prints[printIndex]);
+              if (selectedName) {
+                if (!selectedPrint && prints.length > 0) {
+                  if (e.key === "ArrowDown") { e.preventDefault(); setPrintIndex((prev) => Math.min(prev + 1, prints.length - 1)); }
+                  else if (e.key === "ArrowUp") { e.preventDefault(); setPrintIndex((prev) => Math.max(prev - 1, 0)); }
+                  else if (e.key === "Enter" && printIndex >= 0) { e.preventDefault(); setSelectedPrint(prints[printIndex]); }
                 }
                 return;
               }
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setHighlightedIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setHighlightedIndex((prev) => Math.max(prev - 1, 0));
-              } else if (e.key === "Enter" && highlightedIndex >= 0) {
-                e.preventDefault();
-                selectCard(suggestions[highlightedIndex]);
-              } else if (e.key === "Escape") {
-                setShowSuggestions(false);
-              }
+              if (e.key === "ArrowDown") { e.preventDefault(); setHighlightedIndex((prev) => Math.min(prev + 1, suggestions.length - 1)); }
+              else if (e.key === "ArrowUp") { e.preventDefault(); setHighlightedIndex((prev) => Math.max(prev - 1, 0)); }
+              else if (e.key === "Enter" && highlightedIndex >= 0) { e.preventDefault(); selectCard(suggestions[highlightedIndex]); }
+              else if (e.key === "Escape") { setShowSuggestions(false); }
             }}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
