@@ -77,8 +77,19 @@ function parseDeckList(text: string): ParsedLine[] {
   return cards;
 }
 
-async function createItem(collectionId: string, cardName: string, quantity: number, scryfall: ScryfallResult) {
+async function upsertItem(collectionId: string, quantity: number, scryfall: ScryfallResult): Promise<"created" | "updated"> {
   const imageUrl = scryfall.image_uris?.small || scryfall.card_faces?.[0]?.image_uris?.small || null;
+  const existing = await prisma.collectionItem.findFirst({
+    where: { collectionId, oracleId: scryfall.oracle_id, isFoil: false, condition: "NM", game: "paper" },
+  });
+
+  if (existing) {
+    await prisma.collectionItem.update({
+      where: { id: existing.id },
+      data: { quantity: existing.quantity + quantity },
+    });
+    return "updated";
+  }
 
   await prisma.collectionItem.create({
     data: {
@@ -100,6 +111,7 @@ async function createItem(collectionId: string, cardName: string, quantity: numb
       priceTix: scryfall.prices?.tix ? parseFloat(scryfall.prices.tix) : null,
     },
   });
+  return "created";
 }
 
 export async function POST(request: NextRequest) {
@@ -126,7 +138,9 @@ export async function POST(request: NextRequest) {
     }
 
     const uniqueNames = [...nameToClean.values()];
-    let imported = 0;
+    let created = 0;
+    let updated = 0;
+    const updatedNames: string[] = [];
     const errors: string[] = [];
 
     // Batch resolve via Scryfall collection endpoint (up to 75 per request)
@@ -168,13 +182,14 @@ export async function POST(request: NextRequest) {
       notFound = [...uniqueNames];
     }
 
-    // Create items for resolved cards
+    // Create/update items for resolved cards
     for (const name of uniqueNames) {
       const found = resolved.get(name.toLowerCase());
       if (found) {
         const qty = nameToQuantity.get(name) || 1;
-        await createItem(collectionId, name, qty, found);
-        imported++;
+        const action = await upsertItem(collectionId, qty, found);
+        if (action === "created") created++;
+        else { updated++; updatedNames.push(found.name); }
       } else if (!notFound.includes(name)) {
         notFound.push(name);
       }
@@ -186,14 +201,19 @@ export async function POST(request: NextRequest) {
       const scryfall = await searchCard(name);
       if (scryfall) {
         const qty = nameToQuantity.get(name) || 1;
-        await createItem(collectionId, name, qty, scryfall);
-        imported++;
+        const action = await upsertItem(collectionId, qty, scryfall);
+        if (action === "created") created++;
+        else { updated++; updatedNames.push(scryfall.name); }
       } else {
         errors.push(`${name}: not found on Scryfall`);
       }
     }
 
-    return Response.json({ imported, total: parsed.length, errors: errors.length > 0 ? errors : undefined });
+    return Response.json({
+      created, updated, total: parsed.length,
+      updatedNames: updatedNames.length > 0 ? updatedNames : undefined,
+      errors: errors.length > 0 ? errors : undefined,
+    });
   } catch (err) {
     console.error("Import error:", err);
     return Response.json({ error: "Import failed" }, { status: 500 });

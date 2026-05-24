@@ -12,8 +12,10 @@ export default function ImportPage() {
   const [deckUrl, setDeckUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{
-    imported: number;
+    created: number;
+    updated: number;
     total: number;
+    updatedNames?: string[];
     errors?: string[];
   } | null>(null);
   const [error, setError] = useState("");
@@ -137,7 +139,10 @@ export default function ImportPage() {
         {result && (
           <div className="mt-4 p-3 rounded-lg bg-green-50 text-sm text-green-700">
             <p className="font-medium mb-1">
-              Imported {result.imported} of {result.total} cards
+              {result.created > 0 && <span>{result.created} new</span>}
+              {result.created > 0 && result.updated > 0 && <span> &middot; </span>}
+              {result.updated > 0 && <span className="text-amber-700">{result.updated} updated</span>}
+              <span> &mdash; {result.total} total</span>
             </p>
             {result.errors && result.errors.length > 0 && (
               <details className="mt-2">
@@ -152,7 +157,7 @@ export default function ImportPage() {
               </details>
             )}
             <button
-              onClick={() => router.push(`/collections/${params.id}`)}
+              onClick={() => router.push(`/collections/${params.id}${result.updatedNames ? `?updated=${encodeURIComponent(result.updatedNames.join(","))}` : ""}`)}
               className="mt-3 inline-block rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-700"
             >
               View Collection

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -39,9 +39,16 @@ export default function CollectionDetail() {
   const [setPickerItem, setSetPickerItem] = useState<Item | null>(null);
   const [prints, setPrints] = useState<CardPrint[]>([]);
   const [setSearch, setSetSearch] = useState("");
+  const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
 
-
-
+  useEffect(() => {
+    const names = new URL(window.location.href).searchParams.get("updated");
+    if (names) {
+      setHighlighted(new Set(names.split(",").map((n) => n.trim().toLowerCase())));
+      const timer = setTimeout(() => setHighlighted(new Set()), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   useEffect(() => {
     fetch(`/api/collections/${params.id}`)
@@ -225,7 +232,7 @@ export default function CollectionDetail() {
                 const p = priceDisplay(item);
 
                 return (
-                  <tr key={item.id} className="border-b hover:bg-zinc-50">
+                  <tr key={item.id} className={`border-b hover:bg-zinc-50 ${highlighted.has(item.cardName.toLowerCase()) ? "animate-pulse bg-amber-50" : ""}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {item.imageUrl && (
