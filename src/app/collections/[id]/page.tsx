@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -39,18 +39,9 @@ export default function CollectionDetail() {
   const [setPickerId, setSetPickerId] = useState<string | null>(null);
   const [prints, setPrints] = useState<CardPrint[]>([]);
   const [setSearch, setSetSearch] = useState("");
-  const setPickerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!setPickerId) return;
-    const handler = (e: MouseEvent) => {
-      if (setPickerRef.current && !setPickerRef.current.contains(e.target as Node)) {
-        setSetPickerId(null);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [setPickerId]);
+
+
 
   useEffect(() => {
     fetch(`/api/collections/${params.id}`)
@@ -103,25 +94,23 @@ export default function CollectionDetail() {
     router.push("/");
   };
 
-  const openSetPicker = async (item: Item) => {
+  const openSetPicker = (item: Item) => {
     setSetPickerId(item.id);
     setSetSearch("");
     setPrints([]);
-    try {
-      const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(item.cardName)}`);
-      if (!res.ok) { setSetPickerId(null); return; }
-      const json = await res.json();
-      const prints: CardPrint[] = (json.data || []).map((c: any) => ({
-        id: c.id,
-        scryfallId: c.id,
-        setCode: c.set,
-        setName: c.set_name,
-        imageUrl: c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || null,
-      }));
-      setPrints(prints);
-    } catch {
-      setSetPickerId(null);
-    }
+    fetch(`/api/scryfall/search?q=${encodeURIComponent(item.cardName)}`)
+      .then((r) => r.json())
+      .then((json) => {
+        const ps: CardPrint[] = (json.data || []).map((c: any) => ({
+          id: c.id,
+          scryfallId: c.id,
+          setCode: c.set,
+          setName: c.set_name,
+          imageUrl: c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || null,
+        }));
+        setPrints(ps);
+      })
+      .catch(() => {});
   };
 
   const changeSet = async (itemId: string, print: CardPrint, originalItem: Item) => {
@@ -244,16 +233,20 @@ export default function CollectionDetail() {
                     </td>
                     <td className="px-4 py-3 text-zinc-600">
                       {setPickerId === item.id ? (
-                        <div className="relative" ref={setPickerRef}>
+                        <div className="relative inline-block">
                           <input
                             type="text"
                             value={setSearch}
                             onChange={(e) => setSetSearch(e.target.value)}
+                            onBlur={() => setTimeout(() => setSetPickerId(null), 200)}
                             placeholder="Search sets..."
                             className="w-48 rounded border px-2 py-1 text-xs"
                             autoFocus
                           />
-                          <div className="absolute z-10 mt-1 w-72 max-h-48 overflow-auto rounded border bg-white shadow-lg">
+                          <div className="absolute z-50 mt-1 w-72 max-h-48 overflow-auto rounded border bg-white shadow-lg">
+                            {prints.length === 0 && (
+                              <div className="px-2 py-1.5 text-xs text-zinc-400">Loading...</div>
+                            )}
                             {prints
                               .filter((p) =>
                                 p.setName.toLowerCase().includes(setSearch.toLowerCase()) ||
@@ -263,7 +256,8 @@ export default function CollectionDetail() {
                               .map((p) => (
                                 <button
                                   key={p.id}
-                                  onMouseDown={() => changeSet(item.id, p, item)}
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => changeSet(item.id, p, item)}
                                   className="w-full text-left px-2 py-1.5 text-xs hover:bg-zinc-100 border-b last:border-0 flex items-center gap-2"
                                 >
                                   {p.imageUrl && (
