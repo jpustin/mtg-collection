@@ -106,16 +106,22 @@ export default function CollectionDetail() {
   const openSetPicker = async (item: Item) => {
     setSetPickerId(item.id);
     setSetSearch("");
-    const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(item.cardName)}`);
-    const json = await res.json();
-    const prints: CardPrint[] = (json.data || []).map((c: any) => ({
-      id: c.id,
-      scryfallId: c.id,
-      setCode: c.set,
-      setName: c.set_name,
-      imageUrl: c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || null,
-    }));
-    setPrints(prints);
+    setPrints([]);
+    try {
+      const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(item.cardName)}`);
+      if (!res.ok) { setSetPickerId(null); return; }
+      const json = await res.json();
+      const prints: CardPrint[] = (json.data || []).map((c: any) => ({
+        id: c.id,
+        scryfallId: c.id,
+        setCode: c.set,
+        setName: c.set_name,
+        imageUrl: c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || null,
+      }));
+      setPrints(prints);
+    } catch {
+      setSetPickerId(null);
+    }
   };
 
   const changeSet = async (itemId: string, print: CardPrint, originalItem: Item) => {
