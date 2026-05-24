@@ -22,12 +22,22 @@ interface Item {
   priceUpdatedAt: string | null;
 }
 
+interface CardPrint {
+  id: string;
+  scryfallId: string;
+  setCode: string;
+  setName: string;
+  imageUrl: string | null;
+}
+
 export default function CollectionDetail() {
   const params = useParams();
   const router = useRouter();
   const [items, setItems] = useState<Item[]>([]);
   const [collectionName, setCollectionName] = useState("");
   const [audRate, setAudRate] = useState<number | null>(null);
+  const [setPickerId, setSetPickerId] = useState<string | null>(null);
+  const [prints, setPrints] = useState<CardPrint[]>([]);
 
   useEffect(() => {
     fetch(`/api/collections/${params.id}`)
@@ -78,6 +88,43 @@ export default function CollectionDetail() {
     if (!confirm("Delete this entire collection?")) return;
     await fetch(`/api/collections/${params.id}`, { method: "DELETE" });
     router.push("/");
+  };
+
+  const openSetPicker = async (item: Item) => {
+    setSetPickerId(item.id);
+    const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(item.cardName)}`);
+    const json = await res.json();
+    const prints: CardPrint[] = (json.data || []).map((c: any) => ({
+      id: c.id,
+      scryfallId: c.id,
+      setCode: c.set,
+      setName: c.set_name,
+      imageUrl: c.image_uris?.small || c.card_faces?.[0]?.image_uris?.small || null,
+    }));
+    setPrints(prints);
+  };
+
+  const changeSet = async (itemId: string, print: CardPrint, originalItem: Item) => {
+    const res = await fetch(`https://api.scryfall.com/cards/${print.scryfallId}`, {
+      headers: { "User-Agent": "MTGCollectionApp/1.0" },
+    });
+    if (!res.ok) return;
+    const card = await res.json();
+    const changes = {
+      scryfallId: card.id,
+      oracleId: card.oracle_id,
+      setCode: card.set,
+      setName: card.set_name,
+      imageUrl: print.imageUrl,
+      game: card.digital ? "mtgo" : "paper",
+      priceUsd: card.prices?.usd ? parseFloat(card.prices.usd) : null,
+      priceUsdFoil: card.prices?.usd_foil ? parseFloat(card.prices.usd_foil) : null,
+      priceEur: card.prices?.eur ? parseFloat(card.prices.eur) : null,
+      priceEurFoil: card.prices?.eur_foil ? parseFloat(card.prices.eur_foil) : null,
+      priceTix: card.prices?.tix ? parseFloat(card.prices.tix) : null,
+    };
+    await updateItem(itemId, changes);
+    setSetPickerId(null);
   };
 
   const deleteItem = async (itemId: string) => {
@@ -175,7 +222,34 @@ export default function CollectionDetail() {
                         <span className="font-medium">{item.cardName}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-zinc-600">{item.setName}</td>
+                    <td className="px-4 py-3 text-zinc-600">
+                      {setPickerId === item.id ? (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const print = prints.find((p) => p.id === e.target.value);
+                            if (print) changeSet(item.id, print, item);
+                          }}
+                          className="rounded border px-2 py-1 text-xs max-w-[200px]"
+                          autoFocus
+                          onBlur={() => setTimeout(() => setSetPickerId(null), 300)}
+                        >
+                          <option value="">Change set...</option>
+                          {prints.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.setName} ({p.setCode.toUpperCase()})
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <button
+                          onClick={() => openSetPicker(item)}
+                          className="hover:underline cursor-pointer text-left"
+                        >
+                          {item.setName}
+                        </button>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <select
                         value={item.condition}
