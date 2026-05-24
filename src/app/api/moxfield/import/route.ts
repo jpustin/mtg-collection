@@ -77,31 +77,29 @@ function parseDeckList(text: string): ParsedLine[] {
 
   for (const line of lines) {
     if (HEADER_LINES.test(line)) continue;
-    const cleaned = line.replace(/^SB:\s*/i, "");
+    let cleaned = line.replace(/^SB:\s*/i, "");
 
-    // Extract (foil) marker
-    const isFoil = /\(foil\)/i.test(cleaned);
+    // Detect *F* (foil) and *E* (etched) markers used by Arena export
+    const isFoil = /\*F\*/.test(cleaned) || /\(foil\)/i.test(cleaned);
+    cleaned = cleaned.replace(/\s*\*[FE]\*\s*/g, " ").replace(/\s*\(foil\)\s*/gi, " ").trim();
 
-    // Extract set code from parentheses: (M21), (STA), etc.
-    // Matches 2-5 uppercase alphanumeric chars in parens, optionally followed by space + number (collector #)
-    const setMatch = cleaned.match(/\(([A-Z0-9]{2,5})\)\s*(?:\d+\s*)?$/i);
+    // Detect Arena format: (SETCODE) COLLECTOR_NUMBER at end
+    // Collector number can include letters/symbols like 28p, 39s, CN2-22, etc.
+    const arenaMatch = cleaned.match(/\(([A-Z0-9]{2,5})\)\s+([\w-]+)\s*$/i);
     let cardName: string;
     let setCode: string | undefined;
 
-    if (setMatch) {
-      setCode = setMatch[1].toLowerCase();
-      // Remove the set info and foil marker from the name
-      cardName = cleaned
-        .replace(/\s*\(foil\)\s*/gi, "")
-        .replace(/\s*\([A-Z0-9]{2,5}\)\s*(?:\d+\s*)?$/i, "")
-        .trim();
+    if (arenaMatch) {
+      setCode = arenaMatch[1].toLowerCase();
+      cardName = cleaned.replace(/\s*\([A-Z0-9]{2,5}\)\s+[\w-]+\s*$/i, "").trim();
     } else {
+      // Fallback: strip any parenthesized content
       cardName = cleaned
-        .replace(/\s*\(foil\)\s*/gi, "")
-        .replace(/\s*\(.*?\)\s*/g, "")
-        .replace(/\s*\[.*?\]\s*/g, "")
-        .replace(/\s*\{.*?\}\s*/g, "")
+        .replace(/\s*\(.*?\)\s*/g, " ")
+        .replace(/\s*\[.*?\]\s*/g, " ")
+        .replace(/\s*\{.*?\}\s*/g, " ")
         .replace(/\s*#\d+\s*$/, "")
+        .replace(/\s+/g, " ")
         .trim();
     }
 
