@@ -167,6 +167,13 @@ export default function CollectionDetail() {
     loadPicker(item.cardName, false);
   };
 
+  const toggleSetAllLangs = (checked: boolean) => {
+    setShowSetAllLangs(checked);
+    if (setPickerItem) {
+      loadPicker(setPickerItem.cardName, checked);
+    }
+  };
+
   useEffect(() => {
     if (setPickerItem) loadPicker(setPickerItem.cardName, showSetAllLangs);
   }, [showSetAllLangs]);
@@ -420,7 +427,7 @@ export default function CollectionDetail() {
                 <input
                   type="checkbox"
                   checked={showSetAllLangs}
-                  onChange={(e) => setShowSetAllLangs(e.target.checked)}
+                  onChange={(e) => toggleSetAllLangs(e.target.checked)}
                 />
                 Show all languages
               </label>

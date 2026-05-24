@@ -81,6 +81,14 @@ export default function AddCard() {
     loadPrints(name, showAllLanguages);
   };
 
+  const toggleAllLanguages = (checked: boolean) => {
+    setShowAllLanguages(checked);
+    if (selectedName && !selectedPrint) {
+      loadPrints(selectedName, checked);
+      setPrintIndex(-1);
+    }
+  };
+
   useEffect(() => {
     if (selectedName && !selectedPrint) {
       loadPrints(selectedName, showAllLanguages);
@@ -194,7 +202,7 @@ export default function AddCard() {
                 <input
                   type="checkbox"
                   checked={showAllLanguages}
-                  onChange={(e) => setShowAllLanguages(e.target.checked)}
+                  onChange={(e) => toggleAllLanguages(e.target.checked)}
                 />
                 Show all languages
               </label>
