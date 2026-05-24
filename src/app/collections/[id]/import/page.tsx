@@ -69,10 +69,10 @@ export default function ImportPage() {
         >
           &larr; Back
         </Link>
-        <h1 className="text-2xl font-bold">Import Deck</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Import Deck</h1>
       </div>
 
-      <div className="rounded-xl border bg-white p-6 max-w-xl">
+      <div className="rounded-xl border bg-white p-4 sm:p-6 max-w-xl">
         <div className="flex gap-1 mb-5 p-1 rounded-lg bg-zinc-100 w-fit">
           <button
             onClick={() => setMode("text")}

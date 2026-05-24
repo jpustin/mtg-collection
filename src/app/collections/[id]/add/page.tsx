@@ -102,9 +102,9 @@ export default function AddCard() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Add Card</h1>
+        <h1 className="text-xl sm:text-2xl font-bold mb-6">Add Card</h1>
 
-      <div className="rounded-xl border bg-white p-6 max-w-2xl">
+      <div className="rounded-xl border bg-white p-4 sm:p-6 max-w-2xl">
         <label className="block mb-2 text-sm font-medium">Card Name</label>
         <div className="relative mb-4">
           <input
@@ -224,7 +224,7 @@ export default function AddCard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               <div>
                 <label className="block mb-1 text-sm font-medium">Condition</label>
                 <select

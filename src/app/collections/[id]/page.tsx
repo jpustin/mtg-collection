@@ -159,9 +159,9 @@ export default function CollectionDetail() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">{collectionName || "Collection"}</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold">{collectionName || "Collection"}</h1>
+        <div className="flex flex-wrap gap-2">
           <Link
             href={`/collections/${params.id}/add`}
             className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-700"
@@ -178,7 +178,7 @@ export default function CollectionDetail() {
             onClick={refreshPrices}
             className="rounded-lg border px-4 py-2 text-sm hover:bg-zinc-100"
           >
-            Refresh Prices
+            Refresh
           </button>
           <button
             onClick={deleteCollection}
@@ -212,19 +212,19 @@ export default function CollectionDetail() {
           </Link>
         </div>
       ) : (
-        <div className="rounded-xl border bg-white overflow-hidden">
+        <div className="rounded-xl border bg-white overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-zinc-50 text-left">
-                <th className="px-4 py-3 font-medium">Card</th>
-                <th className="px-4 py-3 font-medium">Set</th>
-                <th className="px-4 py-3 font-medium">Condition</th>
-                <th className="px-4 py-3 font-medium">Foil</th>
-                <th className="px-4 py-3 font-medium">Game</th>
-                <th className="px-4 py-3 font-medium">Qty</th>
-                <th className="px-4 py-3 font-medium">Price</th>
-                <th className="px-4 py-3 font-medium">Total</th>
-                <th className="px-4 py-3 font-medium"></th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">Card</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap hidden sm:table-cell">Set</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">Cond.</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap hidden md:table-cell">Foil</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap hidden md:table-cell">Game</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">Qty</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">Price</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap">Total</th>
+                <th className="px-4 py-3 font-medium whitespace-nowrap"></th>
               </tr>
             </thead>
             <tbody>
@@ -236,12 +236,12 @@ export default function CollectionDetail() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {item.imageUrl && (
-                          <img src={item.imageUrl} alt="" className="w-8 h-11 rounded object-cover" />
+                          <img src={item.imageUrl} alt="" className="w-8 h-11 rounded object-cover shrink-0" />
                         )}
                         <span className="font-medium">{item.cardName}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-zinc-600">
+                    <td className="px-4 py-3 text-zinc-600 hidden sm:table-cell">
                       <button
                         onClick={() => openSetPicker(item)}
                         className="hover:underline cursor-pointer text-left"
@@ -262,7 +262,7 @@ export default function CollectionDetail() {
                         <option value="DMG">DMG</option>
                       </select>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 hidden md:table-cell">
                       <select
                         value={item.isFoil ? "yes" : "no"}
                         onChange={(e) => updateItem(item.id, { isFoil: e.target.value === "yes" })}
@@ -272,7 +272,7 @@ export default function CollectionDetail() {
                         <option value="yes">Yes</option>
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-xs">
+                    <td className="px-4 py-3 text-xs hidden md:table-cell">
                       <span className={`rounded px-1.5 py-0.5 ${item.game === "mtgo" ? "bg-blue-50 text-blue-600" : "bg-green-50 text-green-600"}`}>
                         {item.game === "mtgo" ? "MTGO" : "Paper"}
                       </span>
@@ -283,7 +283,7 @@ export default function CollectionDetail() {
                         min={1}
                         value={item.quantity}
                         onChange={(e) => updateItem(item.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) })}
-                        className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs w-14 hover:border-zinc-300"
+                        className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs w-12 sm:w-14 hover:border-zinc-300"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -298,7 +298,7 @@ export default function CollectionDetail() {
                         </a>
                       ) : "-"}
                     </td>
-                    <td className="px-4 py-3 font-semibold">
+                    <td className="px-4 py-3 font-semibold whitespace-nowrap">
                       {p ? `${p.symbol}${(p.value * item.quantity).toFixed(2)}${p.suffix}` : "-"}
                     </td>
                     <td className="px-4 py-3">
@@ -317,8 +317,8 @@ export default function CollectionDetail() {
         </div>
       )}
       {setPickerItem && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/20" onClick={() => setSetPickerItem(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-96 max-h-96 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 sm:pt-20 bg-black/20 p-4" onClick={() => setSetPickerItem(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="p-3 border-b">
               <p className="text-sm font-medium mb-1">Change set: {setPickerItem.cardName}</p>
               <input

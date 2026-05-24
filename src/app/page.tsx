@@ -77,7 +77,7 @@ export default function Home() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div className="rounded-xl border bg-white p-4">
           <p className="text-sm text-zinc-500">Collections</p>
           <p className="text-2xl font-bold">{collections.length}</p>
@@ -116,10 +116,10 @@ export default function Home() {
             return (
               <div
                 key={c.id}
-                className="flex items-center justify-between rounded-xl border bg-white p-4"
+                className="rounded-xl border bg-white p-4"
               >
                 {isEditing ? (
-                  <div className="flex-1">
+                  <div>
                     <input
                       type="text"
                       value={editName}
@@ -131,42 +131,35 @@ export default function Home() {
                       className="w-full rounded border px-2 py-1 text-sm"
                       autoFocus
                     />
-                    <div className="flex gap-2 mt-1">
+                    <div className="flex gap-2 mt-2">
                       <button
                         onClick={() => rename(c.id)}
-                        className="text-xs text-zinc-600 hover:text-zinc-900"
+                        className="text-xs rounded border border-zinc-300 px-2 py-1 text-zinc-600 hover:bg-zinc-100"
                       >
                         Save
                       </button>
                       <button
                         onClick={() => setEditingId(null)}
-                        className="text-xs text-zinc-400 hover:text-zinc-600"
+                        className="text-xs rounded border border-zinc-300 px-2 py-1 text-zinc-500 hover:bg-zinc-100"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <Link href={`/collections/${c.id}`} className="flex-1 hover:opacity-80">
-                    <p className="font-medium">{c.name}</p>
-                    <p className="text-sm text-zinc-500">
-                      {c._count.items} card{c._count.items !== 1 ? "s" : ""}
-                    </p>
-                  </Link>
-                )}
-                <div className="flex items-start gap-4">
-                  <div className="text-right">
-                    <p className="font-semibold">${d.usd.toFixed(2)} USD</p>
-                    <p className="text-xs text-zinc-400">A${(d.usd * (audRate || 1.5)).toFixed(2)} AUD</p>
-                  </div>
-                  {!isEditing && (
-                    <div className="flex flex-col gap-1.5">
+                  <div className="flex items-start gap-3">
+                    <Link href={`/collections/${c.id}`} className="flex-1 min-w-0 hover:opacity-80">
+                      <p className="font-medium truncate">{c.name}</p>
+                      <p className="text-sm text-zinc-500">
+                        {c._count.items} card{c._count.items !== 1 ? "s" : ""}
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        ${d.usd.toFixed(2)} USD &middot; A${(d.usd * (audRate || 1.5)).toFixed(2)} AUD
+                      </p>
+                    </Link>
+                    <div className="flex flex-col gap-1.5 shrink-0">
                       <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setEditingId(c.id);
-                          setEditName(c.name);
-                        }}
+                        onClick={() => { setEditingId(c.id); setEditName(c.name); }}
                         className="text-xs rounded border border-zinc-300 px-2 py-1 text-zinc-600 hover:bg-zinc-100"
                       >
                         Rename
@@ -188,18 +181,15 @@ export default function Home() {
                         </div>
                       ) : (
                         <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setConfirmDelete(c.id);
-                          }}
+                          onClick={() => setConfirmDelete(c.id)}
                           className="text-xs rounded border border-red-300 px-2 py-1 text-red-500 hover:bg-red-50"
                         >
                           Delete
                         </button>
                       )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             );
           })}

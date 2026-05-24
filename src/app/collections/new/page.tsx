@@ -25,7 +25,7 @@ export default function NewCollection() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">New Collection</h1>
+      <h1 className="text-xl sm:text-2xl font-bold mb-6">New Collection</h1>
       <form onSubmit={create} className="rounded-xl border bg-white p-6 max-w-md">
         <label className="block mb-2 text-sm font-medium">Collection Name</label>
         <input
