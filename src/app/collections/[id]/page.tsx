@@ -55,13 +55,16 @@ export default function CollectionDetail() {
       .then((data) => setAudRate(data.aud));
   }, [params.id]);
 
+  const conditionMult: Record<string, number> = { NM: 1, LP: 0.85, MP: 0.7, HP: 0.5, DMG: 0.35 };
+
   const priceDisplay = (item: Item) => {
-    if (item.game === "mtgo") return { value: item.priceTix ?? 0, source: "tcgplayer", symbol: "", suffix: " TIX" };
-    if (item.isFoil && item.priceUsdFoil != null) return { value: item.priceUsdFoil, source: "tcgplayer", symbol: "$", suffix: "" };
-    if (item.priceUsd != null) return { value: item.priceUsd, source: "tcgplayer", symbol: "$", suffix: "" };
-    if (item.priceUsdFoil != null) return { value: item.priceUsdFoil, source: "tcgplayer", symbol: "$", suffix: "" };
-    if (item.priceEur != null) return { value: item.priceEur, source: "cardmarket", symbol: "€", suffix: "" };
-    if (item.priceEurFoil != null) return { value: item.priceEurFoil, source: "cardmarket", symbol: "€", suffix: "" };
+    const mult = conditionMult[item.condition] ?? 1;
+    if (item.game === "mtgo") return { value: (item.priceTix ?? 0) * mult, source: "tcgplayer", symbol: "", suffix: " TIX" };
+    if (item.isFoil && item.priceUsdFoil != null) return { value: item.priceUsdFoil * mult, source: "tcgplayer", symbol: "$", suffix: "" };
+    if (item.priceUsd != null) return { value: item.priceUsd * mult, source: "tcgplayer", symbol: "$", suffix: "" };
+    if (item.priceUsdFoil != null) return { value: item.priceUsdFoil * mult, source: "tcgplayer", symbol: "$", suffix: "" };
+    if (item.priceEur != null) return { value: item.priceEur * mult, source: "cardmarket", symbol: "€", suffix: "" };
+    if (item.priceEurFoil != null) return { value: item.priceEurFoil * mult, source: "cardmarket", symbol: "€", suffix: "" };
     return null;
   };
 
