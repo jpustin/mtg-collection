@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       }
 
       const imageUrl = scryfall.image_uris?.small || scryfall.card_faces?.[0]?.image_uris?.small || null;
-      const game = scryfall.digital ? "mtgo" : "paper";
+      const game = "paper";
 
       await prisma.collectionItem.create({
         data: {
