@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -38,6 +38,19 @@ export default function CollectionDetail() {
   const [audRate, setAudRate] = useState<number | null>(null);
   const [setPickerId, setSetPickerId] = useState<string | null>(null);
   const [prints, setPrints] = useState<CardPrint[]>([]);
+  const [setSearch, setSetSearch] = useState("");
+  const setPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!setPickerId) return;
+    const handler = (e: MouseEvent) => {
+      if (setPickerRef.current && !setPickerRef.current.contains(e.target as Node)) {
+        setSetPickerId(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [setPickerId]);
 
   useEffect(() => {
     fetch(`/api/collections/${params.id}`)
@@ -92,6 +105,7 @@ export default function CollectionDetail() {
 
   const openSetPicker = async (item: Item) => {
     setSetPickerId(item.id);
+    setSetSearch("");
     const res = await fetch(`/api/scryfall/search?q=${encodeURIComponent(item.cardName)}`);
     const json = await res.json();
     const prints: CardPrint[] = (json.data || []).map((c: any) => ({
@@ -224,23 +238,37 @@ export default function CollectionDetail() {
                     </td>
                     <td className="px-4 py-3 text-zinc-600">
                       {setPickerId === item.id ? (
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            const print = prints.find((p) => p.id === e.target.value);
-                            if (print) changeSet(item.id, print, item);
-                          }}
-                          className="rounded border px-2 py-1 text-xs max-w-[200px]"
-                          autoFocus
-                          onBlur={() => setTimeout(() => setSetPickerId(null), 300)}
-                        >
-                          <option value="">Change set...</option>
-                          {prints.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.setName} ({p.setCode.toUpperCase()})
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative" ref={setPickerRef}>
+                          <input
+                            type="text"
+                            value={setSearch}
+                            onChange={(e) => setSetSearch(e.target.value)}
+                            placeholder="Search sets..."
+                            className="w-48 rounded border px-2 py-1 text-xs"
+                            autoFocus
+                          />
+                          <div className="absolute z-10 mt-1 w-72 max-h-48 overflow-auto rounded border bg-white shadow-lg">
+                            {prints
+                              .filter((p) =>
+                                p.setName.toLowerCase().includes(setSearch.toLowerCase()) ||
+                                p.setCode.toLowerCase().includes(setSearch.toLowerCase())
+                              )
+                              .slice(0, 30)
+                              .map((p) => (
+                                <button
+                                  key={p.id}
+                                  onMouseDown={() => changeSet(item.id, p, item)}
+                                  className="w-full text-left px-2 py-1.5 text-xs hover:bg-zinc-100 border-b last:border-0 flex items-center gap-2"
+                                >
+                                  {p.imageUrl && (
+                                    <img src={p.imageUrl} alt="" className="w-4 h-6 rounded object-cover" />
+                                  )}
+                                  <span>{p.setName}</span>
+                                  <span className="text-zinc-400">({p.setCode.toUpperCase()})</span>
+                                </button>
+                              ))}
+                          </div>
+                        </div>
                       ) : (
                         <button
                           onClick={() => openSetPicker(item)}
