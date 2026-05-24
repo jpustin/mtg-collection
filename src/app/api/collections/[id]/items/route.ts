@@ -30,8 +30,10 @@ export async function POST(
       condition: body.condition || "NM",
       isFoil: body.isFoil || false,
       quantity: body.quantity || 1,
+      game: body.game || "paper",
       priceUsd: body.priceUsd ?? null,
       priceUsdFoil: body.priceUsdFoil ?? null,
+      priceTix: body.priceTix ?? null,
     },
   });
   return Response.json(item, { status: 201 });

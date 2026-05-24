@@ -50,3 +50,4 @@ next-env.d.ts
 # sqlite database (local dev)
 *.db
 *.db-journal
+.env*

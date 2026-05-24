@@ -27,8 +27,10 @@ model CollectionItem {
   condition      String     @default("NM")
   isFoil         Boolean    @default(false)
   quantity       Int        @default(1)
+  game           String     @default("paper")
   priceUsd       Float?
   priceUsdFoil   Float?
+  priceTix       Float?
   priceUpdatedAt DateTime?
   createdAt      DateTime   @default(now())
 

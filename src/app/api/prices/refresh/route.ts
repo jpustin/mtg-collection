@@ -13,9 +13,10 @@ export async function POST() {
       if (!card?.prices) continue;
       const priceUsd = card.prices.usd ? parseFloat(card.prices.usd) : null;
       const priceUsdFoil = card.prices.usd_foil ? parseFloat(card.prices.usd_foil) : null;
+      const priceTix = card.prices.tix ? parseFloat(card.prices.tix) : null;
       await prisma.collectionItem.update({
         where: { id: item.id },
-        data: { priceUsd, priceUsdFoil, priceUpdatedAt: new Date() },
+        data: { priceUsd, priceUsdFoil, priceTix, priceUpdatedAt: new Date() },
       });
       updated++;
       await new Promise((r) => setTimeout(r, 100));

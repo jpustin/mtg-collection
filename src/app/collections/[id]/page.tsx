@@ -13,8 +13,10 @@ interface Item {
   condition: string;
   isFoil: boolean;
   quantity: number;
+  game: string;
   priceUsd: number | null;
   priceUsdFoil: number | null;
+  priceTix: number | null;
   priceUpdatedAt: string | null;
 }
 
@@ -31,9 +33,16 @@ export default function CollectionDetail() {
   }, [params.id]);
 
   const totalValue = items.reduce((sum, i) => {
+    if (i.game === "mtgo") {
+      return sum + (i.priceTix || 0) * i.quantity;
+    }
     const price = i.isFoil ? i.priceUsdFoil : i.priceUsd;
     return sum + (price || 0) * i.quantity;
   }, 0);
+
+  const currency = (items.length > 0 && items.some((i) => i.game === "mtgo"))
+    ? "TIX"
+    : "$";
 
   const deleteCollection = async () => {
     if (!confirm("Delete this entire collection?")) return;
@@ -65,6 +74,12 @@ export default function CollectionDetail() {
           >
             Add Card
           </Link>
+          <Link
+            href={`/collections/${params.id}/import`}
+            className="rounded-lg border px-4 py-2 text-sm hover:bg-zinc-100"
+          >
+            Import
+          </Link>
           <button
             onClick={refreshPrices}
             className="rounded-lg border px-4 py-2 text-sm hover:bg-zinc-100"
@@ -82,7 +97,7 @@ export default function CollectionDetail() {
 
       <div className="mb-4 text-sm text-zinc-600">
         {items.length} card{items.length !== 1 ? "s" : ""} &middot;{" "}
-        Est. value: <span className="font-semibold">${totalValue.toFixed(2)}</span>
+        Est. value: <span className="font-semibold">{currency === "TIX" ? "" : "$"}{totalValue.toFixed(2)}{currency === "TIX" ? " TIX" : ""}</span>
       </div>
 
       {items.length === 0 ? (
@@ -104,6 +119,7 @@ export default function CollectionDetail() {
                 <th className="px-4 py-3 font-medium">Set</th>
                 <th className="px-4 py-3 font-medium">Condition</th>
                 <th className="px-4 py-3 font-medium">Foil</th>
+                <th className="px-4 py-3 font-medium">Game</th>
                 <th className="px-4 py-3 font-medium">Qty</th>
                 <th className="px-4 py-3 font-medium">Price</th>
                 <th className="px-4 py-3 font-medium">Total</th>
@@ -112,7 +128,11 @@ export default function CollectionDetail() {
             </thead>
             <tbody>
               {items.map((item) => {
-                const price = item.isFoil ? item.priceUsdFoil : item.priceUsd;
+                const price = item.game === "mtgo"
+                  ? item.priceTix
+                  : item.isFoil ? item.priceUsdFoil : item.priceUsd;
+                const symbol = item.game === "mtgo" ? "" : "$";
+                const suffix = item.game === "mtgo" ? " TIX" : "";
                 return (
                   <tr key={item.id} className="border-b hover:bg-zinc-50">
                     <td className="px-4 py-3">
@@ -130,12 +150,17 @@ export default function CollectionDetail() {
                     <td className="px-4 py-3 text-zinc-600">{item.setName}</td>
                     <td className="px-4 py-3">{item.condition}</td>
                     <td className="px-4 py-3">{item.isFoil ? "Yes" : "No"}</td>
+                    <td className="px-4 py-3 text-xs">
+                      <span className={`rounded px-1.5 py-0.5 ${item.game === "mtgo" ? "bg-blue-50 text-blue-600" : "bg-green-50 text-green-600"}`}>
+                        {item.game === "mtgo" ? "MTGO" : "Paper"}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">{item.quantity}</td>
                     <td className="px-4 py-3">
-                      {price ? `$${price.toFixed(2)}` : "-"}
+                      {price != null ? `${symbol}${price.toFixed(2)}${suffix}` : "-"}
                     </td>
                     <td className="px-4 py-3 font-semibold">
-                      {price ? `$${(price * item.quantity).toFixed(2)}` : "-"}
+                      {price != null ? `${symbol}${(price * item.quantity).toFixed(2)}${suffix}` : "-"}
                     </td>
                     <td className="px-4 py-3">
                       <button

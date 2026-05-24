@@ -11,7 +11,8 @@ interface CardPrinting {
   set_name: string;
   image_uris?: { small: string };
   card_faces?: { image_uris?: { small: string } }[];
-  prices?: { usd: string | null; usd_foil: string | null };
+  prices?: { usd: string | null; usd_foil: string | null; tix: string | null };
+  digital?: boolean;
 }
 
 export default function AddCard() {
@@ -25,6 +26,7 @@ export default function AddCard() {
   const [condition, setCondition] = useState("NM");
   const [isFoil, setIsFoil] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [game, setGame] = useState("paper");
   const [saving, setSaving] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -56,6 +58,9 @@ export default function AddCard() {
   const imageUrl = (card: CardPrinting) =>
     card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || null;
 
+  const digitalSets = new Set(["vma", "me1", "me2", "me3", "me4", "tsb", "tmp", "sta",
+    "prm", "pmei", "mps", "mps2", "mb1", "sld"]);
+
   const addToCollection = async () => {
     if (!selectedPrint) return;
     setSaving(true);
@@ -73,13 +78,18 @@ export default function AddCard() {
         condition,
         isFoil,
         quantity,
+        game,
         priceUsd: print.prices?.usd ? parseFloat(print.prices.usd) : null,
         priceUsdFoil: print.prices?.usd_foil ? parseFloat(print.prices.usd_foil) : null,
+        priceTix: print.prices?.tix ? parseFloat(print.prices.tix) : null,
       }),
     });
     setSaving(false);
     router.push(`/collections/${params.id}`);
   };
+
+  const priceLabel = game === "mtgo" ? "TIX" : "USD";
+  const tixPrice = selectedPrint?.prices?.tix;
 
   return (
     <div>
@@ -165,6 +175,28 @@ export default function AddCard() {
               </button>
             </div>
 
+            <div className="mb-4">
+              <label className="block mb-1 text-sm font-medium">Game</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setGame("paper")}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                    game === "paper" ? "bg-zinc-900 text-white border-zinc-900" : "bg-white hover:bg-zinc-50"
+                  }`}
+                >
+                  Paper
+                </button>
+                <button
+                  onClick={() => setGame("mtgo")}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                    game === "mtgo" ? "bg-zinc-900 text-white border-zinc-900" : "bg-white hover:bg-zinc-50"
+                  }`}
+                >
+                  MTGO
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
                 <label className="block mb-1 text-sm font-medium">Condition</label>
@@ -202,6 +234,12 @@ export default function AddCard() {
                 />
               </div>
             </div>
+
+            {tixPrice && game === "mtgo" && (
+              <div className="mb-4 p-2 rounded bg-blue-50 text-sm text-blue-700">
+                MTGO Price: {parseFloat(tixPrice).toFixed(2)} TIX
+              </div>
+            )}
 
             <button
               onClick={addToCollection}
