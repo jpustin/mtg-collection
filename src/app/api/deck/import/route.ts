@@ -21,7 +21,7 @@ function cleanCardName(raw: string): string {
   return raw.replace(/\s*[\(\[\{].*?[\)\]\}]\s*/g, "").trim();
 }
 
-async function findCard(rawName: string): Promise<ScryfallResult | null> {
+async function searchCard(rawName: string): Promise<ScryfallResult | null> {
   const name = cleanCardName(rawName);
   if (!name) return null;
 
@@ -61,6 +61,31 @@ function parseArchidektDeck(data: any): { quantity: number; cardName: string }[]
   return cards;
 }
 
+async function createItem(collectionId: string, cardName: string, quantity: number, scryfall: ScryfallResult) {
+  const imageUrl = scryfall.image_uris?.small || scryfall.card_faces?.[0]?.image_uris?.small || null;
+
+  await prisma.collectionItem.create({
+    data: {
+      collectionId,
+      scryfallId: scryfall.id,
+      oracleId: scryfall.oracle_id,
+      cardName: scryfall.name,
+      setCode: scryfall.set,
+      setName: scryfall.set_name,
+      imageUrl,
+      condition: "NM",
+      isFoil: false,
+      quantity,
+      game: "paper",
+      priceUsd: scryfall.prices?.usd ? parseFloat(scryfall.prices.usd) : null,
+      priceUsdFoil: scryfall.prices?.usd_foil ? parseFloat(scryfall.prices.usd_foil) : null,
+      priceEur: scryfall.prices?.eur ? parseFloat(scryfall.prices.eur) : null,
+      priceEurFoil: scryfall.prices?.eur_foil ? parseFloat(scryfall.prices.eur_foil) : null,
+      priceTix: scryfall.prices?.tix ? parseFloat(scryfall.prices.tix) : null,
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { collectionId, url } = await request.json();
@@ -97,41 +122,76 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "No cards found in deck" }, { status: 400 });
     }
 
+    // Deduplicate by name
+    const nameToQuantity = new Map<string, number>();
+    for (const { cardName, quantity } of parsed) {
+      nameToQuantity.set(cardName, (nameToQuantity.get(cardName) || 0) + quantity);
+    }
+    const uniqueNames = [...nameToQuantity.keys()];
+
     let imported = 0;
     const errors: string[] = [];
 
-    for (const { cardName, quantity } of parsed) {
-      await new Promise((r) => setTimeout(r, 150));
+    // Batch resolve via Scryfall collection endpoint
+    const identifiers = uniqueNames.map((name) => ({ name }));
+    const collRes = await fetch("https://api.scryfall.com/cards/collection", {
+      method: "POST",
+      headers: { "User-Agent": "MTGCollection/1.0", "Content-Type": "application/json" },
+      body: JSON.stringify({ identifiers }),
+    });
 
-      const scryfall = await findCard(cardName);
-      if (!scryfall) {
-        errors.push(`${cardName}: not found on Scryfall`);
-        continue;
+    const resolved = new Map<string, ScryfallResult>();
+    let notFound: string[] = [];
+
+    if (collRes.ok) {
+      const collData = await collRes.json();
+      if (collData.data) {
+        for (const card of collData.data as ScryfallResult[]) {
+          if (!card.digital && hasPrice(card)) {
+            resolved.set(card.name.toLowerCase(), card);
+          }
+        }
+        for (const card of collData.data as ScryfallResult[]) {
+          const key = card.name.toLowerCase();
+          if (!resolved.has(key) && !card.digital) {
+            resolved.set(key, card);
+          }
+        }
+        for (const card of collData.data as ScryfallResult[]) {
+          const key = card.name.toLowerCase();
+          if (!resolved.has(key)) {
+            resolved.set(key, card);
+          }
+        }
       }
+      if (collData.not_found) {
+        notFound = collData.not_found.map((n: any) => typeof n === "string" ? n : n.name).filter(Boolean);
+      }
+    } else {
+      notFound = [...uniqueNames];
+    }
 
-      const imageUrl = scryfall.image_uris?.small || scryfall.card_faces?.[0]?.image_uris?.small || null;
+    for (const name of uniqueNames) {
+      const found = resolved.get(name.toLowerCase());
+      if (found) {
+        const qty = nameToQuantity.get(name) || 1;
+        await createItem(collectionId, name, qty, found);
+        imported++;
+      } else if (!notFound.includes(name)) {
+        notFound.push(name);
+      }
+    }
 
-      await prisma.collectionItem.create({
-        data: {
-          collectionId,
-          scryfallId: scryfall.id,
-          oracleId: scryfall.oracle_id,
-          cardName: scryfall.name,
-          setCode: scryfall.set,
-          setName: scryfall.set_name,
-          imageUrl,
-          condition: "NM",
-          isFoil: false,
-          quantity,
-          game: "paper",
-          priceUsd: scryfall.prices?.usd ? parseFloat(scryfall.prices.usd) : null,
-          priceUsdFoil: scryfall.prices?.usd_foil ? parseFloat(scryfall.prices.usd_foil) : null,
-          priceEur: scryfall.prices?.eur ? parseFloat(scryfall.prices.eur) : null,
-          priceEurFoil: scryfall.prices?.eur_foil ? parseFloat(scryfall.prices.eur_foil) : null,
-          priceTix: scryfall.prices?.tix ? parseFloat(scryfall.prices.tix) : null,
-        },
-      });
-      imported++;
+    for (const name of notFound) {
+      await new Promise((r) => setTimeout(r, 200));
+      const scryfall = await searchCard(name);
+      if (scryfall) {
+        const qty = nameToQuantity.get(name) || 1;
+        await createItem(collectionId, name, qty, scryfall);
+        imported++;
+      } else {
+        errors.push(`${name}: not found on Scryfall`);
+      }
     }
 
     return Response.json({ imported, total: parsed.length, errors: errors.length > 0 ? errors : undefined });
