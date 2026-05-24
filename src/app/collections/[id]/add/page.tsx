@@ -30,8 +30,10 @@ export default function AddCard() {
   const [saving, setSaving] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [printIndex, setPrintIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const suggestionsRef = useRef<HTMLDivElement | null>(null);
+  const printsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (query.length < 2 || selectedName) {
@@ -53,6 +55,12 @@ export default function AddCard() {
     const el = suggestionsRef.current.children[highlightedIndex] as HTMLElement | undefined;
     el?.scrollIntoView({ block: "nearest" });
   }, [highlightedIndex]);
+
+  useEffect(() => {
+    if (printIndex < 0 || !printsRef.current) return;
+    const el = printsRef.current.children[printIndex] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: "nearest" });
+  }, [printIndex]);
 
   const selectCard = (name: string) => {
     setQuery(name);
@@ -119,6 +127,19 @@ export default function AddCard() {
               }
             }}
             onKeyDown={(e) => {
+              if (selectedName && !selectedPrint && prints.length > 0) {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setPrintIndex((prev) => Math.min(prev + 1, prints.length - 1));
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setPrintIndex((prev) => Math.max(prev - 1, 0));
+                } else if (e.key === "Enter" && printIndex >= 0) {
+                  e.preventDefault();
+                  setSelectedPrint(prints[printIndex]);
+                }
+                return;
+              }
               if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setHighlightedIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
@@ -162,12 +183,13 @@ export default function AddCard() {
             <label className="block mb-2 text-sm font-medium">
               Select Printing ({prints.length} available)
             </label>
-            <div className="max-h-64 overflow-auto rounded-lg border">
-              {prints.map((print) => (
+            <div ref={printsRef} className="max-h-64 overflow-auto rounded-lg border">
+              {prints.map((print, i) => (
                 <button
                   key={print.id}
                   onClick={() => setSelectedPrint(print)}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-zinc-100 border-b last:border-0 text-left"
+                  onMouseEnter={() => setPrintIndex(i)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm border-b last:border-0 text-left ${i === printIndex ? "bg-zinc-100" : "hover:bg-zinc-100"}`}
                 >
                   {imageUrl(print) ? (
                     <img src={imageUrl(print)!} alt="" className="w-6 h-8 rounded object-cover" />
