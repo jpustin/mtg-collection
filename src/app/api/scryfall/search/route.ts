@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   let query = `!"${q}"`;
   if (set) query += ` set:${set}`;
   query += " unique:prints";
-  if (includeLang) query += " include:multilang";
+  if (includeLang) query += " lang:any";
   const result = await searchCards(query);
   return Response.json(result);
 }

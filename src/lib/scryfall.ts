@@ -11,13 +11,20 @@ export async function autocompleteCards(query: string) {
 }
 
 export async function searchCards(query: string) {
-  const res = await fetch(
-    `${SCRYFALL_API}/cards/search?q=${encodeURIComponent(query)}&unique=prints`,
-    { headers: { "User-Agent": "MTGCollectionApp/1.0" } }
-  );
-  if (!res.ok) return { data: [] as ScryfallCard[] };
-  const json = await res.json();
-  return { data: json.data as ScryfallCard[] };
+  const all: ScryfallCard[] = [];
+  let url: string | null = `${SCRYFALL_API}/cards/search?q=${encodeURIComponent(query)}&unique=prints`;
+  let pages = 0;
+  while (url && pages < 5) {
+    const res: Response = await fetch(url, {
+      headers: { "User-Agent": "MTGCollectionApp/1.0" },
+    });
+    if (!res.ok) break;
+    const json = await res.json();
+    all.push(...(json.data as ScryfallCard[]));
+    url = json.has_more ? (json.next_page as string) : null;
+    pages++;
+  }
+  return { data: all };
 }
 
 export async function getCardById(scryfallId: string) {
