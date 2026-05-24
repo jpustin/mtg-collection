@@ -21,6 +21,8 @@ interface Item {
   priceTix: number | null;
   priceEur: number | null;
   priceEurFoil: number | null;
+  tcgplayerUrl: string | null;
+  cardmarketUrl: string | null;
   priceUpdatedAt: string | null;
 }
 
@@ -180,6 +182,8 @@ export default function CollectionDetail() {
       priceEur: card.prices?.eur ? parseFloat(card.prices.eur) : null,
       priceEurFoil: card.prices?.eur_foil ? parseFloat(card.prices.eur_foil) : null,
       priceTix: card.prices?.tix ? parseFloat(card.prices.tix) : null,
+      tcgplayerUrl: card.purchase_uris?.tcgplayer ?? null,
+      cardmarketUrl: card.purchase_uris?.cardmarket ?? null,
     };
     await updateItem(itemId, changes);
     setSetPickerItem(null);
@@ -365,9 +369,22 @@ export default function CollectionDetail() {
                     <td className="px-4 py-3">
                       {p ? (
                         <a
-                          href={`https://scryfall.com/search?q=${encodeURIComponent(`!"${item.cardName}"`)}`}
+                          href={
+                            p.source === "cardmarket"
+                              ? item.cardmarketUrl || `https://scryfall.com/search?q=${encodeURIComponent(`!"${item.cardName}"`)}`
+                              : p.source === "tcgplayer"
+                                ? item.tcgplayerUrl || `https://scryfall.com/search?q=${encodeURIComponent(`!"${item.cardName}"`)}`
+                                : `https://scryfall.com/search?q=${encodeURIComponent(`!"${item.cardName}"`)}`
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
+                          title={
+                            p.source === "cardmarket"
+                              ? "View on CardMarket"
+                              : p.source === "tcgplayer"
+                                ? "View on TCGPlayer"
+                                : "View on MTGO"
+                          }
                           className="hover:underline"
                         >
                           {p.symbol}{p.value.toFixed(2)}{p.suffix}

@@ -35,6 +35,8 @@ model CollectionItem {
   priceTix       Float?
   priceUpdatedAt DateTime?
   lang           String     @default("en")
+  tcgplayerUrl   String?
+  cardmarketUrl  String?
   createdAt      DateTime   @default(now())
 
   @@index([collectionId])

@@ -14,6 +14,7 @@ interface CardPrinting {
   image_uris?: { small: string };
   card_faces?: { image_uris?: { small: string } }[];
   prices?: { usd: string | null; usd_foil: string | null; eur: string | null; eur_foil: string | null; tix: string | null };
+  purchase_uris?: { tcgplayer?: string | null; cardmarket?: string | null };
   digital?: boolean;
 }
 
@@ -126,6 +127,8 @@ export default function AddCard() {
         priceEur: print.prices?.eur ? parseFloat(print.prices.eur) : null,
         priceEurFoil: print.prices?.eur_foil ? parseFloat(print.prices.eur_foil) : null,
         priceTix: print.prices?.tix ? parseFloat(print.prices.tix) : null,
+        tcgplayerUrl: print.purchase_uris?.tcgplayer ?? null,
+        cardmarketUrl: print.purchase_uris?.cardmarket ?? null,
       }),
     });
     setSaving(false);

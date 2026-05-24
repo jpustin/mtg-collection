@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { fallbackPrices } from "@/lib/pricing";
 
 export async function GET(
   _request: Request,
@@ -18,6 +19,17 @@ export async function POST(
 ) {
   const { id } = await params;
   const body = await request.json();
+  const prices = await fallbackPrices({
+    oracleId: body.oracleId,
+    setCode: body.setCode,
+    priceUsd: body.priceUsd,
+    priceUsdFoil: body.priceUsdFoil,
+    priceEur: body.priceEur,
+    priceEurFoil: body.priceEurFoil,
+    priceTix: body.priceTix,
+    tcgplayerUrl: body.tcgplayerUrl,
+    cardmarketUrl: body.cardmarketUrl,
+  });
   const item = await prisma.collectionItem.create({
     data: {
       collectionId: id,
@@ -31,11 +43,13 @@ export async function POST(
       isFoil: body.isFoil || false,
       quantity: body.quantity || 1,
       game: body.game || "paper",
-      priceUsd: body.priceUsd ?? null,
-      priceUsdFoil: body.priceUsdFoil ?? null,
-      priceEur: body.priceEur ?? null,
-      priceEurFoil: body.priceEurFoil ?? null,
-      priceTix: body.priceTix ?? null,
+      priceUsd: prices.priceUsd,
+      priceUsdFoil: prices.priceUsdFoil,
+      priceEur: prices.priceEur,
+      priceEurFoil: prices.priceEurFoil,
+      priceTix: prices.priceTix,
+      tcgplayerUrl: prices.tcgplayerUrl,
+      cardmarketUrl: prices.cardmarketUrl,
       lang: body.lang || "en",
     },
   });

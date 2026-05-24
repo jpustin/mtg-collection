@@ -1,9 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { getCardById } from "@/lib/scryfall";
+import { fallbackPrices } from "@/lib/pricing";
 
 export async function POST() {
   const items = await prisma.collectionItem.findMany({
-    select: { id: true, scryfallId: true, isFoil: true, cardName: true },
+    select: {
+      id: true,
+      scryfallId: true,
+      oracleId: true,
+      setCode: true,
+      cardName: true,
+    },
   });
 
   let updated = 0;
@@ -11,45 +18,42 @@ export async function POST() {
     await new Promise((r) => setTimeout(r, 120));
     try {
       const card = await getCardById(item.scryfallId);
-      if (!card?.prices) continue;
-      const priceUsd = card.prices.usd ? parseFloat(card.prices.usd) : null;
-      const priceUsdFoil = card.prices.usd_foil ? parseFloat(card.prices.usd_foil) : null;
-      const priceEur = card.prices.eur ? parseFloat(card.prices.eur) : null;
-      const priceEurFoil = card.prices.eur_foil ? parseFloat(card.prices.eur_foil) : null;
-      const priceTix = card.prices.tix ? parseFloat(card.prices.tix) : null;
+      const priceUsd = card?.prices?.usd ? parseFloat(card.prices.usd) : null;
+      const priceUsdFoil = card?.prices?.usd_foil ? parseFloat(card.prices.usd_foil) : null;
+      const priceEur = card?.prices?.eur ? parseFloat(card.prices.eur) : null;
+      const priceEurFoil = card?.prices?.eur_foil ? parseFloat(card.prices.eur_foil) : null;
+      const priceTix = card?.prices?.tix ? parseFloat(card.prices.tix) : null;
+      const tcgplayerUrl = card?.purchase_uris?.tcgplayer ?? null;
+      const cardmarketUrl = card?.purchase_uris?.cardmarket ?? null;
 
-      if (!priceUsd && !priceUsdFoil && !priceEur && !priceEurFoil && !priceTix) {
-        const searchUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`!"${item.cardName}"`)}&unique=prints&order=usd&dir=desc`;
-        const res = await fetch(searchUrl, {
-          headers: { "User-Agent": "MTGCollectionApp/1.0" },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const priced = data.data?.find(
-            (c: any) => c.prices?.usd || c.prices?.usd_foil || c.prices?.eur || c.prices?.tix
-          );
-          if (priced) {
-            await prisma.collectionItem.update({
-              where: { id: item.id },
-              data: {
-                scryfallId: priced.id,
-                priceUsd: priced.prices?.usd ? parseFloat(priced.prices.usd) : null,
-                priceUsdFoil: priced.prices?.usd_foil ? parseFloat(priced.prices.usd_foil) : null,
-                priceEur: priced.prices?.eur ? parseFloat(priced.prices.eur) : null,
-                priceEurFoil: priced.prices?.eur_foil ? parseFloat(priced.prices.eur_foil) : null,
-                priceTix: priced.prices?.tix ? parseFloat(priced.prices.tix) : null,
-                priceUpdatedAt: new Date(),
-              },
-            });
-            updated++;
-            continue;
-          }
-        }
-      }
+      // If this exact print has no prices, fall back to another printing
+      // in the same set (matched on oracleId + setCode). This typically
+      // resolves foreign-language prints (e.g. Italian Legends Moat) to
+      // the English same-set price.
+      const resolved = await fallbackPrices({
+        oracleId: item.oracleId,
+        setCode: item.setCode,
+        priceUsd,
+        priceUsdFoil,
+        priceEur,
+        priceEurFoil,
+        priceTix,
+        tcgplayerUrl,
+        cardmarketUrl,
+      });
 
       await prisma.collectionItem.update({
         where: { id: item.id },
-        data: { priceUsd, priceUsdFoil, priceEur, priceEurFoil, priceTix, priceUpdatedAt: new Date() },
+        data: {
+          priceUsd: resolved.priceUsd,
+          priceUsdFoil: resolved.priceUsdFoil,
+          priceEur: resolved.priceEur,
+          priceEurFoil: resolved.priceEurFoil,
+          priceTix: resolved.priceTix,
+          tcgplayerUrl: resolved.tcgplayerUrl,
+          cardmarketUrl: resolved.cardmarketUrl,
+          priceUpdatedAt: new Date(),
+        },
       });
       updated++;
     } catch {

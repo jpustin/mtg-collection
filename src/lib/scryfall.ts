@@ -70,6 +70,11 @@ export interface ScryfallCard {
     eur_foil: string | null;
     tix: string | null;
   };
+  purchase_uris?: {
+    tcgplayer?: string | null;
+    cardmarket?: string | null;
+    cardhoarder?: string | null;
+  };
 }
 
 export interface ScryfallSet {

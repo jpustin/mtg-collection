@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { fallbackPrices } from "@/lib/pricing";
 
 export async function PATCH(
   request: Request,
@@ -6,6 +7,52 @@ export async function PATCH(
 ) {
   const { itemId } = await params;
   const body = await request.json();
+
+  // If any price field was supplied in this PATCH, run fallback against the
+  // resulting (oracleId, setCode) so a freshly-picked print that lacks prices
+  // can pick up its same-set sibling's prices instead.
+  const pricesSent =
+    body.priceUsd !== undefined ||
+    body.priceUsdFoil !== undefined ||
+    body.priceEur !== undefined ||
+    body.priceEurFoil !== undefined ||
+    body.priceTix !== undefined;
+
+  let resolvedPrices: Partial<{
+    priceUsd: number | null;
+    priceUsdFoil: number | null;
+    priceEur: number | null;
+    priceEurFoil: number | null;
+    priceTix: number | null;
+    tcgplayerUrl: string | null;
+    cardmarketUrl: string | null;
+  }> = {};
+
+  if (pricesSent) {
+    let oracleId: string | null = body.oracleId ?? null;
+    let setCode: string | null = body.setCode ?? null;
+    if (!oracleId || !setCode) {
+      const existing = await prisma.collectionItem.findUnique({
+        where: { id: itemId },
+        select: { oracleId: true, setCode: true },
+      });
+      oracleId = oracleId ?? existing?.oracleId ?? null;
+      setCode = setCode ?? existing?.setCode ?? null;
+    }
+    const p = await fallbackPrices({
+      oracleId,
+      setCode,
+      priceUsd: body.priceUsd,
+      priceUsdFoil: body.priceUsdFoil,
+      priceEur: body.priceEur,
+      priceEurFoil: body.priceEurFoil,
+      priceTix: body.priceTix,
+      tcgplayerUrl: body.tcgplayerUrl,
+      cardmarketUrl: body.cardmarketUrl,
+    });
+    resolvedPrices = p;
+  }
+
   const item = await prisma.collectionItem.update({
     where: { id: itemId },
     data: {
@@ -18,11 +65,15 @@ export async function PATCH(
       ...(body.setCode !== undefined && { setCode: body.setCode }),
       ...(body.setName !== undefined && { setName: body.setName }),
       ...(body.imageUrl !== undefined && { imageUrl: body.imageUrl }),
-      ...(body.priceUsd !== undefined && { priceUsd: body.priceUsd }),
-      ...(body.priceUsdFoil !== undefined && { priceUsdFoil: body.priceUsdFoil }),
-      ...(body.priceEur !== undefined && { priceEur: body.priceEur }),
-      ...(body.priceEurFoil !== undefined && { priceEurFoil: body.priceEurFoil }),
-      ...(body.priceTix !== undefined && { priceTix: body.priceTix }),
+      ...(pricesSent && {
+        priceUsd: resolvedPrices.priceUsd ?? null,
+        priceUsdFoil: resolvedPrices.priceUsdFoil ?? null,
+        priceEur: resolvedPrices.priceEur ?? null,
+        priceEurFoil: resolvedPrices.priceEurFoil ?? null,
+        priceTix: resolvedPrices.priceTix ?? null,
+        tcgplayerUrl: resolvedPrices.tcgplayerUrl ?? null,
+        cardmarketUrl: resolvedPrices.cardmarketUrl ?? null,
+      }),
       ...(body.lang !== undefined && { lang: body.lang }),
     },
   });
