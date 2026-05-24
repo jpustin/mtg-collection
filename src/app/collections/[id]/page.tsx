@@ -36,7 +36,7 @@ export default function CollectionDetail() {
   const [items, setItems] = useState<Item[]>([]);
   const [collectionName, setCollectionName] = useState("");
   const [audRate, setAudRate] = useState<number | null>(null);
-  const [setPickerId, setSetPickerId] = useState<string | null>(null);
+  const [setPickerItem, setSetPickerItem] = useState<Item | null>(null);
   const [prints, setPrints] = useState<CardPrint[]>([]);
   const [setSearch, setSetSearch] = useState("");
 
@@ -95,7 +95,7 @@ export default function CollectionDetail() {
   };
 
   const openSetPicker = (item: Item) => {
-    setSetPickerId(item.id);
+    setSetPickerItem(item);
     setSetSearch("");
     setPrints([]);
     fetch(`/api/scryfall/search?q=${encodeURIComponent(item.cardName)}`)
@@ -133,7 +133,7 @@ export default function CollectionDetail() {
       priceTix: card.prices?.tix ? parseFloat(card.prices.tix) : null,
     };
     await updateItem(itemId, changes);
-    setSetPickerId(null);
+    setSetPickerItem(null);
   };
 
   const deleteItem = async (itemId: string) => {
@@ -232,51 +232,12 @@ export default function CollectionDetail() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-zinc-600">
-                      {setPickerId === item.id ? (
-                        <div className="relative inline-block">
-                          <input
-                            type="text"
-                            value={setSearch}
-                            onChange={(e) => setSetSearch(e.target.value)}
-                            onBlur={() => setTimeout(() => setSetPickerId(null), 200)}
-                            placeholder="Search sets..."
-                            className="w-48 rounded border px-2 py-1 text-xs"
-                            autoFocus
-                          />
-                          <div className="absolute z-50 mt-1 w-72 max-h-48 overflow-auto rounded border bg-white shadow-lg">
-                            {prints.length === 0 && (
-                              <div className="px-2 py-1.5 text-xs text-zinc-400">Loading...</div>
-                            )}
-                            {prints
-                              .filter((p) =>
-                                p.setName.toLowerCase().includes(setSearch.toLowerCase()) ||
-                                p.setCode.toLowerCase().includes(setSearch.toLowerCase())
-                              )
-                              .slice(0, 30)
-                              .map((p) => (
-                                <button
-                                  key={p.id}
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => changeSet(item.id, p, item)}
-                                  className="w-full text-left px-2 py-1.5 text-xs hover:bg-zinc-100 border-b last:border-0 flex items-center gap-2"
-                                >
-                                  {p.imageUrl && (
-                                    <img src={p.imageUrl} alt="" className="w-4 h-6 rounded object-cover" />
-                                  )}
-                                  <span>{p.setName}</span>
-                                  <span className="text-zinc-400">({p.setCode.toUpperCase()})</span>
-                                </button>
-                              ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => openSetPicker(item)}
-                          className="hover:underline cursor-pointer text-left"
-                        >
-                          {item.setName}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => openSetPicker(item)}
+                        className="hover:underline cursor-pointer text-left"
+                      >
+                        {item.setName}
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <select
@@ -343,6 +304,47 @@ export default function CollectionDetail() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+      {setPickerItem && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/20" onClick={() => setSetPickerItem(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-96 max-h-96 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-3 border-b">
+              <p className="text-sm font-medium mb-1">Change set: {setPickerItem.cardName}</p>
+              <input
+                type="text"
+                value={setSearch}
+                onChange={(e) => setSetSearch(e.target.value)}
+                placeholder="Search sets..."
+                className="w-full rounded border px-2 py-1 text-sm"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-72 overflow-auto">
+              {prints.length === 0 && (
+                <div className="p-4 text-sm text-zinc-400 text-center">Loading prints...</div>
+              )}
+              {prints
+                .filter((p) =>
+                  p.setName.toLowerCase().includes(setSearch.toLowerCase()) ||
+                  p.setCode.toLowerCase().includes(setSearch.toLowerCase())
+                )
+                .slice(0, 50)
+                .map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => changeSet(setPickerItem.id, p, setPickerItem)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 border-b last:border-0 flex items-center gap-3"
+                  >
+                    {p.imageUrl && (
+                      <img src={p.imageUrl} alt="" className="w-5 h-7 rounded object-cover" />
+                    )}
+                    <span>{p.setName}</span>
+                    <span className="text-zinc-400 ml-auto">({p.setCode.toUpperCase()})</span>
+                  </button>
+                ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
