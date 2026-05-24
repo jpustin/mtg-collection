@@ -104,7 +104,7 @@ export default function ImportPage() {
           <>
             <label className="block mb-2 text-sm font-medium">Deck URL</label>
             <p className="text-xs text-zinc-500 mb-3">
-              Paste the URL of a public deck from Archidekt.
+              Paste a public deck URL from Archidekt.
             </p>
             <input
               type="url"
@@ -113,13 +113,10 @@ export default function ImportPage() {
               placeholder="https://archidekt.com/decks/12345"
               className="w-full rounded-lg border px-3 py-2 text-sm mb-4"
             />
-            <details className="mb-4 text-xs text-zinc-500">
-              <summary className="cursor-pointer hover:text-zinc-700">Supported sites</summary>
-              <ul className="mt-2 ml-4 list-disc space-y-1">
-                <li><strong>Archidekt</strong> &mdash; <code>https://archidekt.com/decks/&lt;id&gt;</code></li>
-                <li><strong>Moxfield</strong> &mdash; not available via URL. Use Paste Text mode instead.</li>
-              </ul>
-            </details>
+            <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600">
+              <p className="font-medium mb-1">Moxfield users</p>
+              <p>Moxfield doesn't allow automated imports. On your deck page, click <strong>Export → Copy</strong> (top-right), then switch to <button onClick={() => setMode("text")} className="text-blue-600 underline">Paste Text</button> and paste.</p>
+            </div>
           </>
         )}
 
