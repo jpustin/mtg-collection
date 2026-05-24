@@ -59,6 +59,7 @@ export interface ScryfallCard {
     usd: string | null;
     usd_foil: string | null;
     eur: string | null;
+    eur_foil: string | null;
     tix: string | null;
   };
 }
