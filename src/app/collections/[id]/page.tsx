@@ -27,6 +27,7 @@ export default function CollectionDetail() {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>([]);
   const [collectionName, setCollectionName] = useState("");
+  const [audRate, setAudRate] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(`/api/collections/${params.id}`)
@@ -35,6 +36,9 @@ export default function CollectionDetail() {
     fetch(`/api/collections/${params.id}/items`)
       .then((r) => r.json())
       .then(setItems);
+    fetch("/api/rates")
+      .then((r) => r.json())
+      .then((data) => setAudRate(data.aud));
   }, [params.id]);
 
   const priceDisplay = (item: Item) => {
@@ -56,12 +60,19 @@ export default function CollectionDetail() {
     });
   };
 
-  const totalValue = items.reduce((sum, i) => {
-    const p = priceDisplay(i);
-    return sum + (p ? p.value * i.quantity : 0);
-  }, 0);
+  const totals = items.reduce(
+    (acc, i) => {
+      const p = priceDisplay(i);
+      if (!p) return acc;
+      if (p.symbol === "$") acc.usd += p.value * i.quantity;
+      else if (p.symbol === "€") acc.eur += p.value * i.quantity;
+      else if (p.suffix === " TIX") acc.tix += p.value * i.quantity;
+      return acc;
+    },
+    { usd: 0, eur: 0, tix: 0 }
+  );
 
-  const hasMtgo = items.length > 0 && items.some((i) => i.game === "mtgo");
+  const totalUsdLine = items.length > 0 && items.some((i) => i.game !== "mtgo");
 
   const deleteCollection = async () => {
     if (!confirm("Delete this entire collection?")) return;
@@ -112,9 +123,16 @@ export default function CollectionDetail() {
         </div>
       </div>
 
-      <div className="mb-4 text-sm text-zinc-600">
-        {items.length} card{items.length !== 1 ? "s" : ""} &middot;{" "}
-        Est. value: <span className="font-semibold">{hasMtgo ? "" : "$"}{totalValue.toFixed(2)}{hasMtgo ? " TIX" : ""}</span>
+      <div className="mb-4 text-sm text-zinc-600 space-y-1">
+        <div>{items.length} card{items.length !== 1 ? "s" : ""}</div>
+        {totals.usd > 0 && (
+          <div>
+            Est. value: <span className="font-semibold">${totals.usd.toFixed(2)} USD</span>
+            {audRate && <span className="ml-2 text-zinc-400">(A${(totals.usd * audRate).toFixed(2)} AUD)</span>}
+          </div>
+        )}
+        {totals.eur > 0 && <div>EUR: <span className="font-semibold">€{totals.eur.toFixed(2)}</span></div>}
+        {totals.tix > 0 && <div>TIX: <span className="font-semibold">{totals.tix.toFixed(2)} TIX</span></div>}
       </div>
 
       {items.length === 0 ? (
