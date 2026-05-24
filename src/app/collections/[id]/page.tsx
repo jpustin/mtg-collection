@@ -125,7 +125,7 @@ export default function CollectionDetail() {
       setCode: card.set,
       setName: card.set_name,
       imageUrl: print.imageUrl,
-      game: card.digital ? "mtgo" : "paper",
+      game: "paper",
       priceUsd: card.prices?.usd ? parseFloat(card.prices.usd) : null,
       priceUsdFoil: card.prices?.usd_foil ? parseFloat(card.prices.usd_foil) : null,
       priceEur: card.prices?.eur ? parseFloat(card.prices.eur) : null,
