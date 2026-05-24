@@ -154,49 +154,51 @@ export default function Home() {
                     </p>
                   </Link>
                 )}
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-4">
                   <div className="text-right">
                     <p className="font-semibold">${d.usd.toFixed(2)} USD</p>
                     <p className="text-xs text-zinc-400">A${(d.usd * (audRate || 1.5)).toFixed(2)} AUD</p>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setEditingId(c.id);
-                        setEditName(c.name);
-                      }}
-                      className="text-xs text-zinc-400 hover:text-zinc-600"
-                    >
-                      Rename
-                    </button>
-                    {confirmDelete === c.id ? (
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => del(c.id)}
-                          className="text-xs text-red-600 hover:text-red-800"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(null)}
-                          className="text-xs text-zinc-400 hover:text-zinc-600"
-                        >
-                          No
-                        </button>
-                      </div>
-                    ) : (
+                  {!isEditing && (
+                    <div className="flex flex-col gap-1.5">
                       <button
                         onClick={(e) => {
                           e.preventDefault();
-                          setConfirmDelete(c.id);
+                          setEditingId(c.id);
+                          setEditName(c.name);
                         }}
-                        className="text-xs text-red-400 hover:text-red-600"
+                        className="text-xs rounded border border-zinc-300 px-2 py-1 text-zinc-600 hover:bg-zinc-100"
                       >
-                        Delete
+                        Rename
                       </button>
-                    )}
-                  </div>
+                      {confirmDelete === c.id ? (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => del(c.id)}
+                            className="text-xs rounded border border-red-300 px-2 py-1 text-red-600 hover:bg-red-50"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(null)}
+                            className="text-xs rounded border border-zinc-300 px-2 py-1 text-zinc-500 hover:bg-zinc-100"
+                          >
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setConfirmDelete(c.id);
+                          }}
+                          className="text-xs rounded border border-red-300 px-2 py-1 text-red-500 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
