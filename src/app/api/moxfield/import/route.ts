@@ -13,28 +13,32 @@ interface ScryfallResult {
   digital: boolean;
 }
 
-async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
-  for (let i = 0; i < retries; i++) {
+const HEADER_LINES = /^(sideboard|mainboard|main|deck|creatures|instants|sorceries|enchantments|artifacts|planeswalkers|lands|tokens|maybeboard|commanders|companions):$/i;
+
+function cleanCardName(raw: string): string {
+  return raw
+    .replace(/\s*\(.*?\)\s*/g, "")
+    .replace(/\s*\[.*?\]\s*/g, "")
+    .replace(/\s*\{.*?\}\s*/g, "")
+    .replace(/\s*#\d+\s*$/, "")
+    .replace(/^\s*SB:\s*/i, "")
+    .trim();
+}
+
+async function findCard(rawName: string): Promise<ScryfallResult | null> {
+  const name = cleanCardName(rawName);
+  if (!name) return null;
+
+  const url = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`;
+  try {
     const res = await fetch(url, {
       headers: { "User-Agent": "MTGCollection/1.0" },
     });
-    if (res.ok || i === retries - 1) return res;
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  throw new Error(`Failed to fetch ${url}`);
-}
-
-async function findCard(name: string): Promise<ScryfallResult | null> {
-  const searchUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`!"${name}"`)}&unique=prints&order=released&dir=desc`;
-  try {
-    const res = await fetch(searchUrl, {
-      headers: { "User-Agent": "MTGCollection/1.0" },
-    });
     if (res.ok) {
-      const data = await res.json();
-      if (data.data && data.data.length > 0) return data.data[0] as ScryfallResult;
+      return (await res.json()) as ScryfallResult;
     }
   } catch {}
+
   return null;
 }
 
@@ -48,6 +52,7 @@ function parseDeckList(text: string): ParsedLine[] {
   const cards: ParsedLine[] = [];
 
   for (const line of lines) {
+    if (HEADER_LINES.test(line)) continue;
     const cleaned = line.replace(/^SB:\s*/i, "");
     const match = cleaned.match(/^(\d+)\s+(.+)$/);
     if (match) {
@@ -76,44 +81,38 @@ export async function POST(request: NextRequest) {
 
     let imported = 0;
     let errors: string[] = [];
-    const batchSize = 5;
 
-    for (let i = 0; i < parsed.length; i += batchSize) {
-      const batch = parsed.slice(i, i + batchSize);
-      const results = await Promise.allSettled(
-        batch.map(async ({ cardName, quantity }) => {
-          const scryfall = await findCard(cardName);
-          if (!scryfall) {
-            errors.push(`${cardName}: not found on Scryfall`);
-            return;
-          }
-          const imageUrl = scryfall.image_uris?.small || scryfall.card_faces?.[0]?.image_uris?.small || null;
-          const game = scryfall.digital ? "mtgo" : "paper";
+    for (const { cardName, quantity } of parsed) {
+      await new Promise((r) => setTimeout(r, 150));
 
-          await prisma.collectionItem.create({
-            data: {
-              collectionId,
-              scryfallId: scryfall.id,
-              oracleId: scryfall.oracle_id,
-              cardName: scryfall.name,
-              setCode: scryfall.set,
-              setName: scryfall.set_name,
-              imageUrl,
-              condition: "NM",
-              isFoil: false,
-              quantity,
-              game,
-              priceUsd: scryfall.prices?.usd ? parseFloat(scryfall.prices.usd) : null,
-              priceUsdFoil: scryfall.prices?.usd_foil ? parseFloat(scryfall.prices.usd_foil) : null,
-              priceTix: scryfall.prices?.tix ? parseFloat(scryfall.prices.tix) : null,
-            },
-          });
-          imported++;
-        })
-      );
-      if (i + batchSize < parsed.length) {
-        await new Promise((r) => setTimeout(r, 200));
+      const scryfall = await findCard(cardName);
+      if (!scryfall) {
+        errors.push(`${cardName}: not found on Scryfall`);
+        continue;
       }
+
+      const imageUrl = scryfall.image_uris?.small || scryfall.card_faces?.[0]?.image_uris?.small || null;
+      const game = scryfall.digital ? "mtgo" : "paper";
+
+      await prisma.collectionItem.create({
+        data: {
+          collectionId,
+          scryfallId: scryfall.id,
+          oracleId: scryfall.oracle_id,
+          cardName: scryfall.name,
+          setCode: scryfall.set,
+          setName: scryfall.set_name,
+          imageUrl,
+          condition: "NM",
+          isFoil: false,
+          quantity,
+          game,
+          priceUsd: scryfall.prices?.usd ? parseFloat(scryfall.prices.usd) : null,
+          priceUsdFoil: scryfall.prices?.usd_foil ? parseFloat(scryfall.prices.usd_foil) : null,
+          priceTix: scryfall.prices?.tix ? parseFloat(scryfall.prices.tix) : null,
+        },
+      });
+      imported++;
     }
 
     return Response.json({ imported, total: parsed.length, errors: errors.length > 0 ? errors : undefined });
