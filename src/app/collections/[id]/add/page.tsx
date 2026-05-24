@@ -29,7 +29,9 @@ export default function AddCard() {
   const [game, setGame] = useState("paper");
   const [saving, setSaving] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const suggestionsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (query.length < 2 || selectedName) {
@@ -37,6 +39,7 @@ export default function AddCard() {
       return;
     }
     clearTimeout(debounceRef.current);
+    setHighlightedIndex(-1);
     debounceRef.current = setTimeout(async () => {
       const res = await fetch(`/api/scryfall/autocomplete?q=${encodeURIComponent(query)}`);
       const json = await res.json();
@@ -44,6 +47,12 @@ export default function AddCard() {
       setShowSuggestions(true);
     }, 200);
   }, [query, selectedName]);
+
+  useEffect(() => {
+    if (highlightedIndex < 0 || !suggestionsRef.current) return;
+    const el = suggestionsRef.current.children[highlightedIndex] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: "nearest" });
+  }, [highlightedIndex]);
 
   const selectCard = (name: string) => {
     setQuery(name);
@@ -109,6 +118,20 @@ export default function AddCard() {
                 setSelectedPrint(null);
               }
             }}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setHighlightedIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+              } else if (e.key === "Enter" && highlightedIndex >= 0) {
+                e.preventDefault();
+                selectCard(suggestions[highlightedIndex]);
+              } else if (e.key === "Escape") {
+                setShowSuggestions(false);
+              }
+            }}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             className="w-full rounded-lg border px-3 py-2 text-sm"
@@ -116,12 +139,16 @@ export default function AddCard() {
             autoFocus
           />
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-10 mt-1 w-full rounded-lg border bg-white shadow-lg max-h-60 overflow-auto">
-              {suggestions.map((name) => (
+            <div
+              ref={suggestionsRef}
+              className="absolute z-10 mt-1 w-full rounded-lg border bg-white shadow-lg max-h-60 overflow-auto"
+            >
+              {suggestions.map((name, i) => (
                 <button
                   key={name}
                   onMouseDown={() => selectCard(name)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100"
+                  onMouseEnter={() => setHighlightedIndex(i)}
+                  className={`w-full text-left px-3 py-2 text-sm ${i === highlightedIndex ? "bg-zinc-100" : ""}`}
                 >
                   {name}
                 </button>
