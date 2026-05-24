@@ -25,17 +25,37 @@ function cleanCardName(raw: string): string {
     .trim();
 }
 
+function hasPrice(card: ScryfallResult): boolean {
+  return !!(card.prices?.usd || card.prices?.usd_foil || card.prices?.tix);
+}
+
 async function findCard(rawName: string): Promise<ScryfallResult | null> {
   const name = cleanCardName(rawName);
   if (!name) return null;
 
-  const url = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`;
+  const namedUrl = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`;
   try {
-    const res = await fetch(url, {
+    const res = await fetch(namedUrl, {
       headers: { "User-Agent": "MTGCollection/1.0" },
     });
     if (res.ok) {
-      return (await res.json()) as ScryfallResult;
+      const card = (await res.json()) as ScryfallResult;
+      if (hasPrice(card)) return card;
+    }
+  } catch {}
+
+  const searchUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`!"${name}"`)}&unique=prints&order=usd&dir=desc`;
+  try {
+    const res = await fetch(searchUrl, {
+      headers: { "User-Agent": "MTGCollection/1.0" },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.data && data.data.length > 0) {
+        const withPrice = data.data.find(hasPrice);
+        if (withPrice) return withPrice as ScryfallResult;
+        return data.data[0] as ScryfallResult;
+      }
     }
   } catch {}
 

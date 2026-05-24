@@ -70,8 +70,10 @@ export default function CollectionDetail() {
   };
 
   const priceDisplay = (item: Item) => {
-    const price = item.game === "mtgo" ? item.priceTix : item.isFoil ? item.priceUsdFoil : item.priceUsd;
-    return price != null ? price : 0;
+    if (item.game === "mtgo") return item.priceTix ?? 0;
+    if (item.isFoil && item.priceUsdFoil != null) return item.priceUsdFoil;
+    if (!item.isFoil && item.priceUsd != null) return item.priceUsd;
+    return item.priceUsdFoil ?? item.priceUsd ?? 0;
   };
 
   return (
